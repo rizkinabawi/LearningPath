@@ -9,28 +9,28 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  Dimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  getLearningPaths,
-  getModules,
-  getLessons,
-  getFlashcards,
-  getQuizzes,
-  saveLearningPath,
-  saveModule,
-  saveLesson,
-  deleteLearningPath,
-  generateId,
-  type LearningPath,
-  type Module,
-  type Lesson,
+  getLearningPaths, getModules, getLessons, getFlashcards, getQuizzes,
+  saveLearningPath, saveModule, saveLesson, deleteLearningPath,
+  generateId, type LearningPath, type Module, type Lesson,
 } from "@/utils/storage";
-import Colors, { shadow, CARD_COLORS } from "@/constants/colors";
+import Colors from "@/constants/colors";
 
-const ICONS = ["📘", "🎨", "🌐", "🧠", "⚗️", "📐", "💻", "🎯", "🔬"];
+const { width } = Dimensions.get("window");
+
+const GRAD_PALETTE = [
+  ["#4A9EFF", "#6C63FF"] as [string, string],
+  ["#FF6B6B", "#FF9500"] as [string, string],
+  ["#0AD3C1", "#00B4D8"] as [string, string],
+  ["#7C3AED", "#A855F7"] as [string, string],
+  ["#059669", "#10B981"] as [string, string],
+];
 
 export default function LearnPage() {
   const router = useRouter();
@@ -40,17 +40,17 @@ export default function LearnPage() {
   const [modules, setModules] = useState<Module[]>([]);
   const [lessons, setLessons] = useState<Record<string, Lesson[]>>({});
   const [counts, setCounts] = useState<Record<string, { fc: number; qz: number }>>({});
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const [showCreatePath, setShowCreatePath] = useState(false);
-  const [showCreateModule, setShowCreateModule] = useState(false);
-  const [showCreateLesson, setShowCreateLesson] = useState(false);
-  const [newPathName, setNewPathName] = useState("");
-  const [newPathDesc, setNewPathDesc] = useState("");
-  const [newModuleName, setNewModuleName] = useState("");
-  const [newLessonName, setNewLessonName] = useState("");
-  const [newLessonDesc, setNewLessonDesc] = useState("");
-  const [targetModuleId, setTargetModuleId] = useState<string | null>(null);
+  const [showNewPath, setShowNewPath] = useState(false);
+  const [showNewModule, setShowNewModule] = useState(false);
+  const [showNewLesson, setShowNewLesson] = useState(false);
+  const [pathName, setPathName] = useState("");
+  const [pathDesc, setPathDesc] = useState("");
+  const [modName, setModName] = useState("");
+  const [lessonName, setLessonName] = useState("");
+  const [lessonDesc, setLessonDesc] = useState("");
+  const [targetMod, setTargetMod] = useState<string | null>(null);
 
   const loadPaths = async () => {
     const data = await getLearningPaths();
@@ -82,95 +82,87 @@ export default function LearnPage() {
   useEffect(() => { if (activePath) loadModules(); }, [activePath]);
 
   const createPath = async () => {
-    if (!newPathName.trim()) return;
-    const p: LearningPath = {
-      id: generateId(), name: newPathName.trim(),
-      description: newPathDesc.trim(), userId: "local",
-      createdAt: new Date().toISOString(),
-    };
+    if (!pathName.trim()) return;
+    const p: LearningPath = { id: generateId(), name: pathName.trim(), description: pathDesc.trim(), userId: "local", createdAt: new Date().toISOString() };
     await saveLearningPath(p);
-    setNewPathName(""); setNewPathDesc("");
-    setShowCreatePath(false);
+    setPathName(""); setPathDesc(""); setShowNewPath(false);
     const updated = await getLearningPaths();
     setPaths(updated); setActivePath(p);
   };
 
   const createModule = async () => {
-    if (!newModuleName.trim() || !activePath) return;
-    const m: Module = {
-      id: generateId(), pathId: activePath.id,
-      name: newModuleName.trim(), description: "",
-      order: modules.length, createdAt: new Date().toISOString(),
-    };
+    if (!modName.trim() || !activePath) return;
+    const m: Module = { id: generateId(), pathId: activePath.id, name: modName.trim(), description: "", order: modules.length, createdAt: new Date().toISOString() };
     await saveModule(m);
-    setNewModuleName(""); setShowCreateModule(false);
+    setModName(""); setShowNewModule(false);
     loadModules();
   };
 
   const createLesson = async () => {
-    if (!newLessonName.trim() || !targetModuleId) return;
-    const l: Lesson = {
-      id: generateId(), moduleId: targetModuleId,
-      name: newLessonName.trim(), description: newLessonDesc.trim(),
-      order: (lessons[targetModuleId] ?? []).length,
-      createdAt: new Date().toISOString(),
-    };
+    if (!lessonName.trim() || !targetMod) return;
+    const l: Lesson = { id: generateId(), moduleId: targetMod, name: lessonName.trim(), description: lessonDesc.trim(), order: (lessons[targetMod] ?? []).length, createdAt: new Date().toISOString() };
     await saveLesson(l);
-    setNewLessonName(""); setNewLessonDesc("");
-    setShowCreateLesson(false); loadModules();
+    setLessonName(""); setLessonDesc(""); setShowNewLesson(false);
+    loadModules();
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 74 : insets.top + 12 }]}>
-        <View>
-          <Text style={styles.headerSub}>Kurikulum</Text>
-          <Text style={styles.headerTitle}>My Courses</Text>
+      {/* GRADIENT HEADER */}
+      <LinearGradient
+        colors={["#0A1628", "#0D2045", "#1A3066"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.headerGrad, { paddingTop: Platform.OS === "web" ? 60 : insets.top + 12 }]}
+      >
+        <View style={styles.hdot1} />
+        <View style={styles.hdot2} />
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerSub}>Kurikulum</Text>
+            <Text style={styles.headerTitle}>My Courses</Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowNewPath(true)} style={styles.addBtn} activeOpacity={0.8}>
+            <LinearGradient colors={["#4A9EFF", "#6C63FF"]} style={styles.addGrad}>
+              <Feather name="plus" size={20} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          onPress={() => setShowCreatePath(true)}
-          style={styles.addBtn}
-          activeOpacity={0.8}
-        >
-          <Feather name="plus" size={20} color={Colors.white} />
-        </TouchableOpacity>
-      </View>
 
-      {/* Path tabs */}
-      {paths.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.pathTabs}
-        >
-          {paths.map((p) => (
-            <TouchableOpacity
-              key={p.id}
-              onPress={() => setActivePath(p)}
-              onLongPress={() =>
-                Alert.alert("Hapus", `Hapus "${p.name}"?`, [
+        {/* Path tabs — FIXED HEIGHT */}
+        {paths.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pathTabsContent}
+            style={styles.pathTabsScroll}
+          >
+            {paths.map((p) => (
+              <TouchableOpacity
+                key={p.id}
+                onPress={() => setActivePath(p)}
+                onLongPress={() => Alert.alert("Hapus", `Hapus "${p.name}"?`, [
                   { text: "Batal", style: "cancel" },
-                  {
-                    text: "Hapus", style: "destructive",
-                    onPress: async () => {
-                      await deleteLearningPath(p.id);
-                      const u = await getLearningPaths();
-                      setPaths(u); setActivePath(u[0] ?? null);
-                    },
-                  },
-                ])
-              }
-              style={[styles.pathTab, activePath?.id === p.id && styles.pathTabActive]}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.pathTabText, activePath?.id === p.id && styles.pathTabTextActive]}>
-                {p.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+                  { text: "Hapus", style: "destructive", onPress: async () => {
+                    await deleteLearningPath(p.id);
+                    const u = await getLearningPaths();
+                    setPaths(u); setActivePath(u[0] ?? null);
+                  }},
+                ])}
+                style={[styles.pathTab, activePath?.id === p.id && styles.pathTabActive]}
+                activeOpacity={0.7}
+              >
+                {activePath?.id === p.id && (
+                  <View style={styles.pathTabDot} />
+                )}
+                <Text style={[styles.pathTabText, activePath?.id === p.id && styles.pathTabTextActive]} numberOfLines={1}>
+                  {p.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+      </LinearGradient>
 
       <ScrollView
         style={styles.scroll}
@@ -178,76 +170,76 @@ export default function LearnPage() {
         showsVerticalScrollIndicator={false}
       >
         {paths.length === 0 && (
-          <View style={styles.emptyWrap}>
-            <Text style={{ fontSize: 56 }}>📚</Text>
-            <Text style={styles.emptyTitle}>Belum Ada Kursus</Text>
-            <Text style={styles.emptySub}>Buat jalur belajar pertamamu dan mulai mengisi konten.</Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => setShowCreatePath(true)}>
-              <Text style={styles.emptyBtnText}>Buat Jalur Belajar</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={() => setShowNewPath(true)} activeOpacity={0.85}>
+            <LinearGradient colors={["#4A9EFF", "#6C63FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.emptyGrad}>
+              <View style={styles.hdot1} /><View style={styles.hdot2} />
+              <Feather name="plus-circle" size={36} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.emptyGradTitle}>Buat Kursus Pertama</Text>
+              <Text style={styles.emptyGradSub}>Tap untuk membuat jalur belajarmu</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         )}
 
-        {/* Modules as course cards */}
         {modules.map((mod, mi) => {
-          const isExpanded = !!expandedModules[mod.id];
+          const isExpanded = !!expanded[mod.id];
           const modLessons = lessons[mod.id] ?? [];
           const cnt = counts[mod.id] ?? { fc: 0, qz: 0 };
-          const cardColor = CARD_COLORS[mi % CARD_COLORS.length];
+          const grad = GRAD_PALETTE[mi % GRAD_PALETTE.length];
+
           return (
-            <View key={mod.id} style={[styles.moduleCard, { borderLeftColor: cardColor }]}>
+            <View key={mod.id} style={styles.moduleCard}>
               <TouchableOpacity
-                onPress={() => setExpandedModules((p) => ({ ...p, [mod.id]: !p[mod.id] }))}
+                onPress={() => setExpanded((p) => ({ ...p, [mod.id]: !p[mod.id] }))}
                 style={styles.moduleHeader}
                 activeOpacity={0.7}
               >
-                <View style={[styles.modIconWrap, { backgroundColor: cardColor + "20" }]}>
-                  <Text style={{ fontSize: 20 }}>{ICONS[mi % ICONS.length]}</Text>
-                </View>
+                <LinearGradient colors={grad} style={styles.modIconGrad}>
+                  <Text style={{ fontSize: 16 }}>
+                    {["📘","🎨","🌐","🧠","⚗️"][mi % 5]}
+                  </Text>
+                </LinearGradient>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.moduleName}>{mod.name}</Text>
-                  <Text style={styles.moduleMeta}>
-                    {modLessons.length} pelajaran · {cnt.fc} kartu · {cnt.qz} kuis
-                  </Text>
+                  <View style={styles.moduleMetaRow}>
+                    <View style={styles.metaChip}><Text style={styles.metaChipText}>{modLessons.length} Pelajaran</Text></View>
+                    <View style={styles.metaChip}><Text style={styles.metaChipText}>{cnt.fc} Kartu</Text></View>
+                    <View style={styles.metaChip}><Text style={styles.metaChipText}>{cnt.qz} Kuis</Text></View>
+                  </View>
                 </View>
-                <Feather
-                  name={isExpanded ? "chevron-up" : "chevron-down"}
-                  size={18}
-                  color={Colors.textMuted}
-                />
+                <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color={Colors.textMuted} />
               </TouchableOpacity>
 
               {isExpanded && (
                 <View style={styles.lessonList}>
                   {modLessons.map((lesson, li) => (
                     <View key={lesson.id} style={styles.lessonRow}>
-                      <View style={[styles.lessonNum, { backgroundColor: cardColor }]}>
+                      <LinearGradient colors={grad} style={styles.lessonNum}>
                         <Text style={styles.lessonNumText}>{li + 1}</Text>
-                      </View>
+                      </LinearGradient>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.lessonName}>{lesson.name}</Text>
-                        {lesson.description ? (
-                          <Text style={styles.lessonDesc}>{lesson.description}</Text>
-                        ) : null}
+                        {lesson.description ? <Text style={styles.lessonDesc} numberOfLines={1}>{lesson.description}</Text> : null}
                       </View>
-                      <View style={styles.lessonBtns}>
+                      <View style={styles.lessonActions}>
                         <TouchableOpacity
                           onPress={() => router.push(`/flashcard/${lesson.id}`)}
-                          style={[styles.lessonActionBtn, { backgroundColor: Colors.primaryLight }]}
+                          style={styles.actionPill}
+                          activeOpacity={0.75}
                         >
-                          <Text style={{ fontSize: 14 }}>🃏</Text>
+                          <Text style={styles.actionPillText}>🃏 Kartu</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => router.push(`/quiz/${lesson.id}`)}
-                          style={[styles.lessonActionBtn, { backgroundColor: Colors.accentLight }]}
+                          style={[styles.actionPill, styles.actionPillOrange]}
+                          activeOpacity={0.75}
                         >
-                          <Text style={{ fontSize: 14 }}>❓</Text>
+                          <Text style={styles.actionPillText}>❓ Quiz</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => router.push(`/create-flashcard/${lesson.id}`)}
-                          style={[styles.lessonActionBtn, { backgroundColor: Colors.background }]}
+                          style={styles.addIconBtn}
                         >
-                          <Feather name="plus" size={14} color={Colors.textSecondary} />
+                          <Feather name="plus" size={14} color={Colors.primary} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -255,9 +247,9 @@ export default function LearnPage() {
 
                   <TouchableOpacity
                     style={styles.addLessonRow}
-                    onPress={() => { setTargetModuleId(mod.id); setShowCreateLesson(true); }}
+                    onPress={() => { setTargetMod(mod.id); setShowNewLesson(true); }}
                   >
-                    <Feather name="plus-circle" size={16} color={Colors.primary} />
+                    <Feather name="plus-circle" size={15} color={Colors.primary} />
                     <Text style={styles.addLessonText}>Tambah Pelajaran</Text>
                   </TouchableOpacity>
                 </View>
@@ -267,56 +259,44 @@ export default function LearnPage() {
         })}
 
         {activePath && (
-          <TouchableOpacity
-            style={styles.addModuleBtn}
-            onPress={() => setShowCreateModule(true)}
-          >
-            <Feather name="plus" size={16} color={Colors.primary} />
-            <Text style={styles.addModuleText}>Tambah Modul</Text>
+          <TouchableOpacity style={styles.addModBtn} onPress={() => setShowNewModule(true)}>
+            <Feather name="plus" size={15} color={Colors.primary} />
+            <Text style={styles.addModText}>Tambah Modul Baru</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
 
-      {/* Modals */}
+      {/* MODALS */}
       {[
-        { visible: showCreatePath, title: "Jalur Belajar Baru", onClose: () => setShowCreatePath(false), onSave: createPath,
-          body: (
-            <>
-              <TextInput placeholder="Nama jalur" value={newPathName} onChangeText={setNewPathName}
-                style={styles.modalInput} placeholderTextColor={Colors.textMuted} autoFocus />
-              <TextInput placeholder="Deskripsi (opsional)" value={newPathDesc} onChangeText={setNewPathDesc}
-                style={styles.modalInput} placeholderTextColor={Colors.textMuted} />
-            </>
-          )
-        },
-        { visible: showCreateModule, title: "Modul Baru", onClose: () => setShowCreateModule(false), onSave: createModule,
-          body: (
-            <TextInput placeholder="Nama modul" value={newModuleName} onChangeText={setNewModuleName}
-              style={styles.modalInput} placeholderTextColor={Colors.textMuted} autoFocus />
-          )
-        },
-        { visible: showCreateLesson, title: "Pelajaran Baru", onClose: () => setShowCreateLesson(false), onSave: createLesson,
-          body: (
-            <>
-              <TextInput placeholder="Nama pelajaran" value={newLessonName} onChangeText={setNewLessonName}
-                style={styles.modalInput} placeholderTextColor={Colors.textMuted} autoFocus />
-              <TextInput placeholder="Deskripsi (opsional)" value={newLessonDesc} onChangeText={setNewLessonDesc}
-                style={styles.modalInput} placeholderTextColor={Colors.textMuted} />
-            </>
-          )
-        },
+        { vis: showNewPath, title: "📚 Kursus Baru", close: () => setShowNewPath(false), save: createPath, body: (
+          <>
+            <TextInput placeholder="Nama kursus" value={pathName} onChangeText={setPathName} style={styles.mInput} placeholderTextColor={Colors.textMuted} autoFocus />
+            <TextInput placeholder="Deskripsi (opsional)" value={pathDesc} onChangeText={setPathDesc} style={styles.mInput} placeholderTextColor={Colors.textMuted} />
+          </>
+        )},
+        { vis: showNewModule, title: "📂 Modul Baru", close: () => setShowNewModule(false), save: createModule, body: (
+          <TextInput placeholder="Nama modul" value={modName} onChangeText={setModName} style={styles.mInput} placeholderTextColor={Colors.textMuted} autoFocus />
+        )},
+        { vis: showNewLesson, title: "📝 Pelajaran Baru", close: () => setShowNewLesson(false), save: createLesson, body: (
+          <>
+            <TextInput placeholder="Nama pelajaran" value={lessonName} onChangeText={setLessonName} style={styles.mInput} placeholderTextColor={Colors.textMuted} autoFocus />
+            <TextInput placeholder="Deskripsi (opsional)" value={lessonDesc} onChangeText={setLessonDesc} style={styles.mInput} placeholderTextColor={Colors.textMuted} />
+          </>
+        )},
       ].map((m) => (
-        <Modal key={m.title} visible={m.visible} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalBox}>
-              <Text style={styles.modalTitle}>{m.title}</Text>
+        <Modal key={m.title} visible={m.vis} transparent animationType="slide">
+          <View style={styles.mOverlay}>
+            <View style={styles.mBox}>
+              <Text style={styles.mTitle}>{m.title}</Text>
               {m.body}
-              <View style={styles.modalBtns}>
-                <TouchableOpacity onPress={m.onClose} style={styles.modalBtnCancel}>
-                  <Text style={styles.modalBtnCancelText}>Batal</Text>
+              <View style={styles.mBtns}>
+                <TouchableOpacity onPress={m.close} style={styles.mBtnCancel}>
+                  <Text style={styles.mBtnCancelText}>Batal</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={m.onSave} style={styles.modalBtnPrimary}>
-                  <Text style={styles.modalBtnPrimaryText}>Simpan</Text>
+                <TouchableOpacity onPress={m.save} style={styles.mBtnOk}>
+                  <LinearGradient colors={["#4A9EFF", "#6C63FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mBtnOkGrad}>
+                    <Text style={styles.mBtnOkText}>Simpan</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             </View>
@@ -329,154 +309,55 @@ export default function LearnPage() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: Colors.background,
-  },
-  headerSub: { fontSize: 12, color: Colors.textMuted, fontWeight: "700" },
-  headerTitle: { fontSize: 26, fontWeight: "900", color: Colors.dark },
-  addBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: Colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadow,
-  },
-  pathTabs: { paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
-  pathTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: Colors.white,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-  },
-  pathTabActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  pathTabText: { fontSize: 13, fontWeight: "700", color: Colors.textMuted },
-  pathTabTextActive: { color: Colors.white },
+  headerGrad: { paddingHorizontal: 20, paddingBottom: 16, overflow: "hidden" },
+  hdot1: { position: "absolute", width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(74,158,255,0.1)", top: -40, right: -40 },
+  hdot2: { position: "absolute", width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(108,99,255,0.08)", top: 10, right: 60 },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+  headerSub: { fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
+  headerTitle: { fontSize: 26, fontWeight: "900", color: "#fff", letterSpacing: -0.5 },
+  addBtn: { borderRadius: 14, overflow: "hidden" },
+  addGrad: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  pathTabsScroll: { height: 38 },
+  pathTabsContent: { flexDirection: "row", alignItems: "center", gap: 8, paddingRight: 4 },
+  pathTab: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.1)", height: 36 },
+  pathTabActive: { backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
+  pathTabDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.primary },
+  pathTabText: { fontSize: 13, fontWeight: "700", color: "rgba(255,255,255,0.65)", maxWidth: 120 },
+  pathTabTextActive: { color: "#fff" },
   scroll: { flex: 1 },
-  emptyWrap: { alignItems: "center", paddingVertical: 60, gap: 8 },
-  emptyTitle: { fontSize: 20, fontWeight: "900", color: Colors.dark, marginTop: 12 },
-  emptySub: { fontSize: 14, color: Colors.textMuted, textAlign: "center", fontWeight: "500", lineHeight: 20 },
-  emptyBtn: {
-    marginTop: 12,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 999,
-  },
-  emptyBtnText: { color: Colors.white, fontWeight: "800", fontSize: 14 },
-  moduleCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 20,
-    marginBottom: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderLeftWidth: 4,
-    ...shadow,
-    shadowOpacity: 0.05,
-  },
-  moduleHeader: { flexDirection: "row", alignItems: "center", padding: 16, gap: 12 },
-  modIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  moduleName: { fontSize: 15, fontWeight: "800", color: Colors.dark },
-  moduleMeta: { fontSize: 11, color: Colors.textMuted, fontWeight: "500", marginTop: 2 },
-  lessonList: { borderTopWidth: 1, borderTopColor: Colors.border, paddingHorizontal: 16, paddingBottom: 12 },
-  lessonRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    gap: 12,
-  },
-  lessonNum: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lessonNumText: { fontSize: 12, fontWeight: "900", color: Colors.white },
-  lessonName: { fontSize: 14, fontWeight: "700", color: Colors.dark },
-  lessonDesc: { fontSize: 12, color: Colors.textMuted, fontWeight: "500", marginTop: 1 },
-  lessonBtns: { flexDirection: "row", gap: 6 },
-  lessonActionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addLessonRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 12,
-  },
+  emptyGrad: { borderRadius: 22, padding: 36, alignItems: "center", gap: 10, overflow: "hidden", marginBottom: 12 },
+  emptyGradTitle: { fontSize: 18, fontWeight: "900", color: "#fff" },
+  emptyGradSub: { fontSize: 13, color: "rgba(255,255,255,0.75)", fontWeight: "500" },
+  moduleCard: { backgroundColor: "#fff", borderRadius: 18, marginBottom: 10, overflow: "hidden", borderWidth: 1, borderColor: Colors.border },
+  moduleHeader: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
+  modIconGrad: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  moduleName: { fontSize: 15, fontWeight: "800", color: Colors.dark, marginBottom: 6 },
+  moduleMetaRow: { flexDirection: "row", gap: 6 },
+  metaChip: { backgroundColor: Colors.background, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  metaChipText: { fontSize: 10, fontWeight: "700", color: Colors.textSecondary },
+  lessonList: { borderTopWidth: 1, borderTopColor: Colors.border, paddingHorizontal: 14, paddingBottom: 8 },
+  lessonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: 10 },
+  lessonNum: { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  lessonNumText: { fontSize: 11, fontWeight: "900", color: "#fff" },
+  lessonName: { fontSize: 13, fontWeight: "700", color: Colors.dark },
+  lessonDesc: { fontSize: 11, color: Colors.textMuted, fontWeight: "500" },
+  lessonActions: { flexDirection: "row", gap: 6, alignItems: "center" },
+  actionPill: { backgroundColor: Colors.primaryLight, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
+  actionPillOrange: { backgroundColor: Colors.accentLight },
+  actionPillText: { fontSize: 10, fontWeight: "800", color: Colors.dark },
+  addIconBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: Colors.background, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Colors.border },
+  addLessonRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },
   addLessonText: { fontSize: 13, color: Colors.primary, fontWeight: "700" },
-  addModuleBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    borderStyle: "dashed",
-    marginBottom: 20,
-  },
-  addModuleText: { fontSize: 14, fontWeight: "700", color: Colors.primary },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(10,37,64,0.45)", justifyContent: "flex-end" },
-  modalBox: {
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    paddingBottom: 40,
-    gap: 12,
-  },
-  modalTitle: { fontSize: 20, fontWeight: "900", color: Colors.dark, marginBottom: 4 },
-  modalInput: {
-    backgroundColor: Colors.background,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.dark,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-  },
-  modalBtns: { flexDirection: "row", gap: 10, marginTop: 4 },
-  modalBtnCancel: {
-    flex: 1,
-    paddingVertical: 15,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    alignItems: "center",
-  },
-  modalBtnCancelText: { fontWeight: "700", color: Colors.textSecondary, fontSize: 14 },
-  modalBtnPrimary: {
-    flex: 1,
-    paddingVertical: 15,
-    borderRadius: 999,
-    backgroundColor: Colors.primary,
-    alignItems: "center",
-  },
-  modalBtnPrimaryText: { fontWeight: "800", color: Colors.white, fontSize: 14 },
+  addModBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.primary, borderStyle: "dashed" },
+  addModText: { fontSize: 13, fontWeight: "700", color: Colors.primary },
+  mOverlay: { flex: 1, backgroundColor: "rgba(10,22,40,0.6)", justifyContent: "flex-end" },
+  mBox: { backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, gap: 12 },
+  mTitle: { fontSize: 20, fontWeight: "900", color: Colors.dark },
+  mInput: { backgroundColor: Colors.background, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14, fontWeight: "600", color: Colors.dark, borderWidth: 1.5, borderColor: Colors.border },
+  mBtns: { flexDirection: "row", gap: 10 },
+  mBtnCancel: { flex: 1, paddingVertical: 14, borderRadius: 999, alignItems: "center", backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border },
+  mBtnCancelText: { fontSize: 14, fontWeight: "700", color: Colors.textSecondary },
+  mBtnOk: { flex: 1, borderRadius: 999, overflow: "hidden" },
+  mBtnOkGrad: { paddingVertical: 14, alignItems: "center" },
+  mBtnOkText: { fontSize: 14, fontWeight: "900", color: "#fff" },
 });
