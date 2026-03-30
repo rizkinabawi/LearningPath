@@ -1,39 +1,67 @@
 const Colors = {
-  primary: "#4A9EFF",
-  primaryDark: "#0075FF",
-  primaryLight: "#EBF5FF",
-  accent: "#FF9500",
-  accentLight: "#FFF8EB",
+  primary: "#4C6FFF",
+  primaryDark: "#3B5AF0",
+  primaryLight: "#EEF0FF",
+  accent: "#FF6B6B",
+  accentLight: "#FFF0F0",
   teal: "#0AD3C1",
   tealLight: "#E0FAF8",
-  dark: "#0A2540",
+  amber: "#FF9500",
+  amberLight: "#FFF8EB",
+  purple: "#7C3AED",
+  purpleLight: "#F5F3FF",
+  emerald: "#10B981",
+  emeraldLight: "#ECFDF5",
+  dark: "#0F1F3D",
+  black: "#0F1F3D",
+  darkMed: "#1E3A5F",
   white: "#FFFFFF",
-  background: "#F5F7FA",
+  background: "#F4F7FF",
   surface: "#FFFFFF",
-  border: "#E8EDF5",
-  text: "#0A2540",
-  textSecondary: "#5A7184",
-  textMuted: "#9EACBC",
+  border: "#E6ECF8",
+  borderLight: "#F0F4FC",
+  text: "#0F1F3D",
+  textSecondary: "#526484",
+  textMuted: "#99AAC3",
   success: "#22C55E",
   successLight: "#F0FDF4",
   danger: "#EF4444",
   dangerLight: "#FEF2F2",
   warning: "#F59E0B",
-  tabActive: "#4A9EFF",
-  tabInactive: "#9EACBC",
-  card1: "#4A9EFF",
+  warningLight: "#FFFBEB",
+  tabActive: "#4C6FFF",
+  tabInactive: "#99AAC3",
+  card1: "#4C6FFF",
   card2: "#FF9500",
   card3: "#0AD3C1",
-  card4: "#0A2540",
+  card4: "#7C3AED",
 };
 
 export default Colors;
 
-export const CARD_COLORS = ["#4A9EFF", "#FF9500", "#0AD3C1", "#0A2540"];
+export const CARD_COLORS = ["#4C6FFF", "#FF6B6B", "#0AD3C1", "#7C3AED", "#10B981", "#FF9500"];
+
+export const CARD_GRADIENTS: [string, string][] = [
+  ["#4C6FFF", "#7C47FF"],
+  ["#FF6B6B", "#FF9500"],
+  ["#0AD3C1", "#00B4D8"],
+  ["#7C3AED", "#A855F7"],
+  ["#10B981", "#059669"],
+  ["#F59E0B", "#EF4444"],
+];
+
 export const shadow = {
-  shadowColor: "#0A2540",
+  shadowColor: "#1E3A5F",
   shadowOffset: { width: 0, height: 4 },
   shadowOpacity: 0.08,
-  shadowRadius: 12,
-  elevation: 4,
+  shadowRadius: 16,
+  elevation: 5,
+};
+
+export const shadowSm = {
+  shadowColor: "#1E3A5F",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.05,
+  shadowRadius: 8,
+  elevation: 2,
 };

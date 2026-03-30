@@ -4,11 +4,10 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
-  RefreshControl,
   StyleSheet,
   Platform,
   Dimensions,
+  RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -18,49 +17,15 @@ import {
   getUser, getLearningPaths, getStats, getWrongAnswers,
   type User, type LearningPath, type Stats,
 } from "@/utils/storage";
-import Colors from "@/constants/colors";
+import Colors, { shadow, shadowSm, CARD_GRADIENTS } from "@/constants/colors";
 import { ProgressBar } from "@/components/ProgressBar";
 
 const { width } = Dimensions.get("window");
+const CARD_W = width * 0.72;
 
-const GRAD_PALETTE = [
-  ["#4A9EFF", "#6C63FF"],
-  ["#FF6B6B", "#FF9500"],
-  ["#0AD3C1", "#00B4D8"],
-  ["#7C3AED", "#A855F7"],
-  ["#059669", "#10B981"],
+const COURSE_ICONS: React.ComponentProps<typeof Feather>["name"][] = [
+  "book", "code", "globe", "cpu", "layers", "award",
 ];
-
-function GradientCard({
-  gradient, emoji, title, subtitle, onPress,
-}: {
-  gradient: string[];
-  emoji: string;
-  title: string;
-  subtitle?: string;
-  onPress?: () => void;
-}) {
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={styles.courseCard}>
-      <LinearGradient
-        colors={gradient as [string, string]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.courseGradient}
-      >
-        {/* Decorative circles */}
-        <View style={styles.decCircle1} />
-        <View style={styles.decCircle2} />
-        <Text style={styles.courseEmoji}>{emoji}</Text>
-        <Text style={styles.courseTitle} numberOfLines={2}>{title}</Text>
-        {subtitle ? <Text style={styles.courseSub} numberOfLines={1}>{subtitle}</Text> : null}
-        <View style={styles.courseArrow}>
-          <Feather name="arrow-right" size={14} color="#fff" />
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
-}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -70,10 +35,11 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [wrongCount, setWrongCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState("");
 
   const load = async () => {
-    const [u, p, s, w] = await Promise.all([getUser(), getLearningPaths(), getStats(), getWrongAnswers()]);
+    const [u, p, s, w] = await Promise.all([
+      getUser(), getLearningPaths(), getStats(), getWrongAnswers(),
+    ]);
     if (!u) { router.replace("/onboarding"); return; }
     setUser(u); setPaths(p); setStats(s); setWrongCount(w.length);
   };
@@ -81,229 +47,370 @@ export default function Dashboard() {
   useFocusEffect(useCallback(() => { load(); }, []));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const accuracy = stats && stats.totalAnswers > 0 ? Math.round((stats.correctAnswers / stats.totalAnswers) * 100) : 0;
-  const filtered = paths.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  const accuracy = stats && stats.totalAnswers > 0
+    ? Math.round((stats.correctAnswers / stats.totalAnswers) * 100) : 0;
 
   const hour = new Date().getHours();
-  const greet = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greet = hour < 12 ? "Selamat pagi" : hour < 17 ? "Selamat siang" : "Selamat malam";
+  const firstName = user?.name?.split(" ")[0] ?? "Learner";
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
-      showsVerticalScrollIndicator={false}
-      stickyHeaderIndices={[0]}
-    >
-      {/* ===== GRADIENT HEADER ===== */}
-      <LinearGradient
-        colors={["#0A1628", "#0D2045", "#1A3066"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.headerGrad, { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16 }]}
+    <View style={styles.root}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
-        {/* Background dots */}
-        <View style={styles.hdot1} />
-        <View style={styles.hdot2} />
-        <View style={styles.hdot3} />
+        {/* ── HEADER ── */}
+        <LinearGradient
+          colors={["#4C6FFF", "#7C47FF"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: Platform.OS === "web" ? 56 : insets.top + 16 }]}
+        >
+          <View style={styles.hBlob1} />
+          <View style={styles.hBlob2} />
+          <View style={styles.hBlob3} />
 
-        {/* Top row */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.greetSub}>{greet} 👋</Text>
-            <Text style={styles.greetName}>{user?.name?.split(" ")[0] ?? "Learner"}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => router.push("/(tabs)/profile")}
-            style={styles.avatarBtn}
-          >
-            <LinearGradient colors={["#4A9EFF", "#6C63FF"]} style={styles.avatarGrad}>
-              <Text style={styles.avatarInitial}>
-                {(user?.name ?? "L").charAt(0).toUpperCase()}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          {[
-            { val: stats?.streak ?? 0, label: "Streak", icon: "🔥" },
-            { val: `${accuracy}%`, label: "Akurasi", icon: "🎯" },
-            { val: stats?.totalAnswers ?? 0, label: "Dijawab", icon: "💬" },
-            { val: paths.length, label: "Kursus", icon: "📚" },
-          ].map((s, i) => (
-            <View key={i} style={styles.statChip}>
-              <Text style={styles.statIcon}>{s.icon}</Text>
-              <Text style={styles.statVal}>{s.val}</Text>
-              <Text style={styles.statLbl}>{s.label}</Text>
+          {/* Top row */}
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.greet}>{greet} 👋</Text>
+              <Text style={styles.name}>{firstName}</Text>
             </View>
-          ))}
-        </View>
-      </LinearGradient>
+            <View style={styles.headerRight}>
+              {wrongCount > 0 && (
+                <TouchableOpacity
+                  style={styles.bellWrap}
+                  onPress={() => router.push("/mistakes-review" as any)}
+                >
+                  <Feather name="bell" size={20} color="#fff" />
+                  <View style={styles.bellDot} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => router.push("/(tabs)/profile")} style={styles.avatar}>
+                <Text style={styles.avatarText}>{firstName.charAt(0).toUpperCase()}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-      {/* ===== SEARCH ===== */}
-      <View style={styles.searchWrap}>
-        <View style={styles.searchBox}>
-          <Feather name="search" size={16} color={Colors.textMuted} />
-          <TextInput
-            placeholder="Cari kursus..."
-            value={search}
-            onChangeText={setSearch}
-            style={styles.searchInput}
-            placeholderTextColor={Colors.textMuted}
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch("")}>
-              <Feather name="x" size={16} color={Colors.textMuted} />
+          {/* Progress summary strip */}
+          <View style={styles.statsStrip}>
+            {[
+              { icon: "activity" as const, val: `${stats?.streak ?? 0}`, sub: "Hari Streak" },
+              { icon: "check-circle" as const, val: `${accuracy}%`, sub: "Akurasi" },
+              { icon: "message-square" as const, val: `${stats?.totalAnswers ?? 0}`, sub: "Jawaban" },
+              { icon: "book" as const, val: `${paths.length}`, sub: "Kursus" },
+            ].map((s, i) => (
+              <View key={i} style={styles.statItem}>
+                <View style={styles.statIconWrap}>
+                  <Feather name={s.icon} size={14} color="rgba(255,255,255,0.85)" />
+                </View>
+                <Text style={styles.statVal}>{s.val}</Text>
+                <Text style={styles.statSub}>{s.sub}</Text>
+              </View>
+            ))}
+          </View>
+        </LinearGradient>
+
+        {/* ── CONTINUE LEARNING ── */}
+        {paths.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>Lanjutkan Belajar</Text>
+              <TouchableOpacity onPress={() => router.push("/(tabs)/learn")} style={styles.seeAll}>
+                <Text style={styles.seeAllText}>Lihat Semua</Text>
+                <Feather name="chevron-right" size={14} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={() => router.push("/(tabs)/learn")}
+              style={[styles.continueCard, shadow]}
+            >
+              <LinearGradient
+                colors={CARD_GRADIENTS[0]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.continueGrad}
+              >
+                <View style={styles.cBlob1} />
+                <View style={styles.cBlob2} />
+                <View style={styles.continueTop}>
+                  <View style={styles.continueBadge}>
+                    <Feather name="play" size={10} color="#fff" />
+                    <Text style={styles.continueBadgeText}>Lanjutkan</Text>
+                  </View>
+                  <View style={styles.continueArrow}>
+                    <Feather name="arrow-right" size={16} color="#fff" />
+                  </View>
+                </View>
+                <Text style={styles.continueName} numberOfLines={2}>{paths[0].name}</Text>
+                <Text style={styles.continueSub} numberOfLines={1}>{paths[0].description || user?.topic || "Kursus aktif"}</Text>
+                <View style={styles.continueProgress}>
+                  <View style={styles.continueBar}>
+                    <View style={[styles.continueBarFill, { width: `${Math.min(accuracy, 100)}%` }]} />
+                  </View>
+                  <Text style={styles.continueBarText}>{accuracy}% selesai</Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── MISTAKES ALERT ── */}
+        {wrongCount > 0 && (
+          <View style={styles.sectionPad}>
+            <TouchableOpacity
+              onPress={() => router.push("/mistakes-review" as any)}
+              activeOpacity={0.85}
+              style={[styles.alertCard, shadow]}
+            >
+              <View style={styles.alertIconWrap}>
+                <Feather name="alert-circle" size={18} color={Colors.danger} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.alertTitle}>{wrongCount} soal perlu direview</Text>
+                <Text style={styles.alertSub}>Perkuat pemahaman kamu sekarang</Text>
+              </View>
+              <View style={styles.alertPill}>
+                <Text style={styles.alertPillText}>Review</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── MY COURSES ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionTitle}>Koleksi Kursus</Text>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/learn")} style={styles.seeAll}>
+              <Text style={styles.seeAllText}>+ Tambah</Text>
+            </TouchableOpacity>
+          </View>
+
+          {paths.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.courseScroll}
+            >
+              {paths.map((path, i) => (
+                <TouchableOpacity
+                  key={path.id}
+                  activeOpacity={0.85}
+                  onPress={() => router.push("/(tabs)/learn")}
+                  style={[styles.courseCard, shadowSm]}
+                >
+                  <LinearGradient
+                    colors={CARD_GRADIENTS[i % CARD_GRADIENTS.length]}
+                    style={styles.courseIconWrap}
+                  >
+                    <Feather name={COURSE_ICONS[i % COURSE_ICONS.length]} size={20} color="#fff" />
+                  </LinearGradient>
+                  <Text style={styles.courseName} numberOfLines={2}>{path.name}</Text>
+                  <Text style={styles.courseSub} numberOfLines={1}>{path.description || user?.topic || "—"}</Text>
+                  <View style={styles.courseFooter}>
+                    <Feather name="chevron-right" size={13} color={Colors.textMuted} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+              {/* Add new */}
+              <TouchableOpacity
+                onPress={() => router.push("/(tabs)/learn")}
+                style={[styles.courseCardAdd, shadowSm]}
+                activeOpacity={0.8}
+              >
+                <View style={styles.addIcon}>
+                  <Feather name="plus" size={22} color={Colors.primary} />
+                </View>
+                <Text style={styles.addText}>Tambah{"\n"}Kursus</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          ) : (
+            <TouchableOpacity
+              onPress={() => router.push("/(tabs)/learn")}
+              activeOpacity={0.85}
+              style={[styles.emptyCard, shadow]}
+            >
+              <LinearGradient colors={["#4C6FFF", "#7C47FF"]} style={styles.emptyGrad}>
+                <View style={styles.cBlob1} /><View style={styles.cBlob2} />
+                <Feather name="plus-circle" size={34} color="rgba(255,255,255,0.9)" />
+                <Text style={styles.emptyTitle}>Buat Kursus Pertama</Text>
+                <Text style={styles.emptySub}>Tap untuk memulai jalur belajarmu</Text>
+              </LinearGradient>
             </TouchableOpacity>
           )}
         </View>
-      </View>
 
-      {/* ===== MISTAKES ALERT ===== */}
-      {wrongCount > 0 && (
-        <TouchableOpacity onPress={() => router.push("/mistakes-review")} activeOpacity={0.85} style={styles.mistakeWrap}>
-          <LinearGradient colors={["#EF4444", "#DC2626"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mistakeGrad}>
-            <View style={styles.mistakeIconWrap}><Feather name="alert-circle" size={18} color="#fff" /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.mistakeTitle}>⚠️ {wrongCount} soal salah perlu direview</Text>
-              <Text style={styles.mistakeSub}>Tap untuk mulai review sekarang</Text>
-            </View>
-            <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
-
-      {/* ===== COURSES ===== */}
-      <View style={styles.section}>
-        <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Kursus Aktif</Text>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/learn")} style={styles.seeAllBtn}>
-            <Text style={styles.seeAllText}>Lihat Semua</Text>
-            <Feather name="chevron-right" size={14} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {filtered.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.courseScroll}>
-            {filtered.map((path, i) => (
-              <GradientCard
-                key={path.id}
-                gradient={GRAD_PALETTE[i % GRAD_PALETTE.length]}
-                emoji={["📘", "🎨", "🌐", "🧠", "⚗️"][i % 5]}
-                title={path.name}
-                subtitle={path.description || user?.topic}
-                onPress={() => router.push("/(tabs)/learn")}
-              />
-            ))}
-          </ScrollView>
-        ) : (
-          <TouchableOpacity onPress={() => router.push("/(tabs)/learn")} activeOpacity={0.85}>
-            <LinearGradient colors={["#4A9EFF", "#6C63FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.emptyGrad}>
-              <View style={styles.decCircle1} />
-              <View style={styles.decCircle2} />
-              <Feather name="plus-circle" size={32} color="rgba(255,255,255,0.9)" />
-              <Text style={styles.emptyGradTitle}>Buat Kursus Pertama</Text>
-              <Text style={styles.emptyGradSub}>Mulai jalur belajarmu sekarang</Text>
+        {/* ── DAILY CHALLENGE ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Daily Challenge</Text>
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => router.push("/(tabs)/practice")}
+            style={[styles.challengeCard, shadow]}
+          >
+            <LinearGradient
+              colors={["#FF6B6B", "#FF9500"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.challengeGrad}
+            >
+              <View style={styles.cBlob1} /><View style={styles.cBlob2} />
+              <View style={styles.challengeLeft}>
+                <View style={styles.challengeIconWrap}>
+                  <Feather name="zap" size={24} color="#fff" />
+                </View>
+                <View>
+                  <Text style={styles.challengeTitle}>5 Soal Kilat</Text>
+                  <Text style={styles.challengeSub}>~10 menit · Semua topik</Text>
+                </View>
+              </View>
+              <View style={styles.challengeBtn}>
+                <Text style={styles.challengeBtnText}>Mulai</Text>
+                <Feather name="arrow-right" size={14} color="#FF6B6B" />
+              </View>
             </LinearGradient>
           </TouchableOpacity>
-        )}
-      </View>
-
-      {/* ===== QUICK ACTIONS ===== */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Menu Cepat</Text>
-        <View style={styles.quickGrid}>
-          {[
-            { icon: "book-open", label: "Flashcard", color: "#4A9EFF", bg: "#EBF5FF", route: "/(tabs)/learn" },
-            { icon: "help-circle", label: "Quiz", color: "#FF9500", bg: "#FFF8EB", route: "/(tabs)/learn" },
-            { icon: "trending-up", label: "Progress", color: "#0AD3C1", bg: "#E0FAF8", route: "/(tabs)/progress" },
-            { icon: "cpu", label: "AI Prompt", color: "#7C3AED", bg: "#F5F3FF", route: "/(tabs)/progress" },
-          ].map((q) => (
-            <TouchableOpacity
-              key={q.label}
-              onPress={() => router.push(q.route as any)}
-              style={[styles.quickCard, { backgroundColor: q.bg }]}
-              activeOpacity={0.78}
-            >
-              <View style={[styles.quickIconWrap, { backgroundColor: q.color }]}>
-                <Feather name={q.icon as any} size={18} color="#fff" />
-              </View>
-              <Text style={styles.quickLabel}>{q.label}</Text>
-            </TouchableOpacity>
-          ))}
         </View>
-      </View>
 
-      {/* ===== GOAL ===== */}
-      {user?.goal && (
+        {/* ── QUICK ACTIONS ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Target Belajar</Text>
-          <LinearGradient colors={["#0A1628", "#1A2E5A"]} style={styles.goalCard}>
-            <View style={styles.goalLeft}>
-              <Text style={{ fontSize: 28 }}>🎯</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.goalText}>{user.goal}</Text>
-              <Text style={styles.goalMeta}>{user.topic} · {user.level}</Text>
-            </View>
-          </LinearGradient>
+          <Text style={styles.sectionTitle}>Menu Cepat</Text>
+          <View style={styles.quickGrid}>
+            {[
+              { icon: "credit-card" as const, label: "Flashcard", color: Colors.primary, bg: Colors.primaryLight, route: "/(tabs)/practice" },
+              { icon: "help-circle" as const, label: "Quiz", color: Colors.amber, bg: Colors.amberLight, route: "/(tabs)/practice" },
+              { icon: "bar-chart-2" as const, label: "Progress", color: Colors.teal, bg: Colors.tealLight, route: "/(tabs)/progress" },
+              { icon: "file-text" as const, label: "PDF Report", color: Colors.purple, bg: Colors.purpleLight, route: "/(tabs)/progress" },
+            ].map((q, i) => (
+              <TouchableOpacity
+                key={i}
+                onPress={() => router.push(q.route as any)}
+                style={[styles.quickItem, shadowSm]}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.quickIcon, { backgroundColor: q.bg }]}>
+                  <Feather name={q.icon} size={20} color={q.color} />
+                </View>
+                <Text style={styles.quickLabel}>{q.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      )}
 
-      <View style={{ height: 24 }} />
-    </ScrollView>
+        {/* ── GOAL CARD ── */}
+        {user?.goal && (
+          <View style={styles.section}>
+            <View style={[styles.goalCard, shadowSm]}>
+              <View style={[styles.goalIcon, { backgroundColor: Colors.primaryLight }]}>
+                <Feather name="target" size={20} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.goalLabel}>Target Belajar</Text>
+                <Text style={styles.goalText} numberOfLines={2}>{user.goal}</Text>
+                <Text style={styles.goalMeta}>{user.topic} · {user.level}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  headerGrad: { paddingHorizontal: 20, paddingBottom: 20, overflow: "hidden" },
-  hdot1: { position: "absolute", width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(74,158,255,0.12)", top: -60, right: -60 },
-  hdot2: { position: "absolute", width: 140, height: 140, borderRadius: 70, backgroundColor: "rgba(108,99,255,0.1)", top: 20, right: 60 },
-  hdot3: { position: "absolute", width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(10,211,193,0.08)", bottom: 0, left: 40 },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 },
-  greetSub: { fontSize: 13, color: "rgba(255,255,255,0.6)", fontWeight: "600", marginBottom: 2 },
-  greetName: { fontSize: 26, fontWeight: "900", color: "#fff", letterSpacing: -0.5 },
-  avatarBtn: { borderRadius: 999 },
-  avatarGrad: { width: 44, height: 44, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  avatarInitial: { fontSize: 18, fontWeight: "900", color: "#fff" },
-  statsRow: { flexDirection: "row", gap: 8 },
-  statChip: { flex: 1, backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 14, paddingVertical: 10, alignItems: "center", gap: 2 },
-  statIcon: { fontSize: 16 },
-  statVal: { fontSize: 16, fontWeight: "900", color: "#fff" },
-  statLbl: { fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: "700", textTransform: "uppercase" },
-  searchWrap: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: Colors.background },
-  searchBox: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#fff", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, borderWidth: 1.5, borderColor: Colors.border },
-  searchInput: { flex: 1, fontSize: 14, fontWeight: "600", color: Colors.dark },
-  mistakeWrap: { marginHorizontal: 16, marginBottom: 8, borderRadius: 16, overflow: "hidden" },
-  mistakeGrad: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
-  mistakeIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
-  mistakeTitle: { fontSize: 13, fontWeight: "800", color: "#fff" },
-  mistakeSub: { fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: "500", marginTop: 2 },
-  section: { paddingHorizontal: 16, marginBottom: 8 },
-  sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  sectionTitle: { fontSize: 17, fontWeight: "900", color: Colors.dark, letterSpacing: -0.3, marginBottom: 10 },
-  seeAllBtn: { flexDirection: "row", alignItems: "center", gap: 2 },
+  root: { flex: 1, backgroundColor: Colors.background },
+
+  /* header */
+  header: { paddingHorizontal: 20, paddingBottom: 24, overflow: "hidden" },
+  hBlob1: { position: "absolute", width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(255,255,255,0.08)", top: -70, right: -60 },
+  hBlob2: { position: "absolute", width: 130, height: 130, borderRadius: 65, backgroundColor: "rgba(255,255,255,0.06)", top: 30, right: 60 },
+  hBlob3: { position: "absolute", width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.04)", bottom: 10, left: 30 },
+  headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 22 },
+  greet: { fontSize: 13, color: "rgba(255,255,255,0.65)", fontWeight: "600", marginBottom: 2 },
+  name: { fontSize: 28, fontWeight: "900", color: "#fff", letterSpacing: -0.6 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
+  bellWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
+  bellDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#FF6B6B", position: "absolute", top: 7, right: 7, borderWidth: 1.5, borderColor: "#4C6FFF" },
+  avatar: { width: 42, height: 42, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "rgba(255,255,255,0.4)" },
+  avatarText: { fontSize: 17, fontWeight: "900", color: "#fff" },
+  statsStrip: { flexDirection: "row", gap: 0, backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 18, overflow: "hidden" },
+  statItem: { flex: 1, alignItems: "center", paddingVertical: 12, gap: 2 },
+  statIconWrap: { width: 26, height: 26, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 2 },
+  statVal: { fontSize: 15, fontWeight: "900", color: "#fff" },
+  statSub: { fontSize: 9, color: "rgba(255,255,255,0.5)", fontWeight: "700", textTransform: "uppercase", textAlign: "center" },
+
+  /* sections */
+  section: { paddingHorizontal: 16, marginTop: 22 },
+  sectionPad: { paddingHorizontal: 16, marginTop: 14 },
+  sectionHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: "900", color: Colors.dark, letterSpacing: -0.4, marginBottom: 0 },
+  seeAll: { flexDirection: "row", alignItems: "center", gap: 2 },
   seeAllText: { fontSize: 13, fontWeight: "700", color: Colors.primary },
-  courseScroll: { gap: 12, paddingRight: 4 },
-  courseCard: { width: 180, borderRadius: 22, overflow: "hidden" },
-  courseGradient: { padding: 18, minHeight: 150, justifyContent: "flex-end", overflow: "hidden" },
-  decCircle1: { position: "absolute", width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(255,255,255,0.08)", top: -20, right: -20 },
-  decCircle2: { position: "absolute", width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(255,255,255,0.06)", top: 30, right: 20 },
-  courseEmoji: { fontSize: 28, marginBottom: 8 },
-  courseTitle: { fontSize: 15, fontWeight: "900", color: "#fff", lineHeight: 20 },
-  courseSub: { fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: "600", marginTop: 4 },
-  courseArrow: { position: "absolute", top: 12, right: 12, width: 28, height: 28, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
-  emptyGrad: { borderRadius: 22, padding: 28, alignItems: "center", gap: 8, overflow: "hidden", minHeight: 140 },
-  emptyGradTitle: { fontSize: 17, fontWeight: "900", color: "#fff" },
-  emptyGradSub: { fontSize: 13, color: "rgba(255,255,255,0.75)", fontWeight: "500" },
+
+  /* continue learning */
+  continueCard: { borderRadius: 24, overflow: "hidden" },
+  continueGrad: { padding: 22, minHeight: 160, overflow: "hidden" },
+  cBlob1: { position: "absolute", width: 130, height: 130, borderRadius: 65, backgroundColor: "rgba(255,255,255,0.1)", top: -30, right: -30 },
+  cBlob2: { position: "absolute", width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.07)", bottom: -20, left: 20 },
+  continueTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  continueBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  continueBadgeText: { fontSize: 11, fontWeight: "800", color: "#fff" },
+  continueArrow: { width: 34, height: 34, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
+  continueName: { fontSize: 20, fontWeight: "900", color: "#fff", letterSpacing: -0.4, marginBottom: 4 },
+  continueSub: { fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: "500", marginBottom: 14 },
+  continueProgress: { flexDirection: "row", alignItems: "center", gap: 10 },
+  continueBar: { flex: 1, height: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.25)" },
+  continueBarFill: { height: "100%", borderRadius: 999, backgroundColor: "#fff" },
+  continueBarText: { fontSize: 11, fontWeight: "800", color: "rgba(255,255,255,0.85)" },
+
+  /* alert */
+  alertCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: Colors.dangerLight, borderRadius: 18, padding: 14, borderWidth: 1, borderColor: "rgba(239,68,68,0.2)" },
+  alertIconWrap: { width: 38, height: 38, borderRadius: 12, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+  alertTitle: { fontSize: 14, fontWeight: "800", color: Colors.danger },
+  alertSub: { fontSize: 12, color: Colors.textSecondary, fontWeight: "500", marginTop: 2 },
+  alertPill: { backgroundColor: Colors.danger, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  alertPillText: { fontSize: 12, fontWeight: "800", color: "#fff" },
+
+  /* courses */
+  courseScroll: { gap: 10, paddingRight: 4 },
+  courseCard: { width: 150, borderRadius: 20, backgroundColor: Colors.white, padding: 16, gap: 8 },
+  courseIconWrap: { width: 46, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  courseName: { fontSize: 14, fontWeight: "800", color: Colors.dark, lineHeight: 20 },
+  courseSub: { fontSize: 11, color: Colors.textMuted, fontWeight: "600" },
+  courseFooter: { flexDirection: "row", justifyContent: "flex-end", marginTop: 4 },
+  courseCardAdd: { width: 110, borderRadius: 20, backgroundColor: Colors.white, padding: 16, alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1.5, borderColor: Colors.border, borderStyle: "dashed" },
+  addIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: Colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  addText: { fontSize: 12, fontWeight: "800", color: Colors.primary, textAlign: "center" },
+
+  /* empty */
+  emptyCard: { borderRadius: 24, overflow: "hidden" },
+  emptyGrad: { padding: 30, alignItems: "center", gap: 10, minHeight: 160, overflow: "hidden" },
+  emptyTitle: { fontSize: 18, fontWeight: "900", color: "#fff" },
+  emptySub: { fontSize: 13, color: "rgba(255,255,255,0.75)", fontWeight: "500" },
+
+  /* challenge */
+  challengeCard: { borderRadius: 22, overflow: "hidden" },
+  challengeGrad: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 18, overflow: "hidden" },
+  challengeLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
+  challengeIconWrap: { width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
+  challengeTitle: { fontSize: 17, fontWeight: "900", color: "#fff" },
+  challengeSub: { fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: "500", marginTop: 2 },
+  challengeBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#fff", paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12 },
+  challengeBtnText: { fontSize: 14, fontWeight: "800", color: "#FF6B6B" },
+
+  /* quick actions */
   quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  quickCard: { width: (width - 32 - 10) / 2, borderRadius: 18, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 },
-  quickIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  quickLabel: { fontSize: 14, fontWeight: "800", color: Colors.dark },
-  goalCard: { borderRadius: 18, padding: 18, flexDirection: "row", alignItems: "center", gap: 14, overflow: "hidden" },
-  goalLeft: { width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.1)", alignItems: "center", justifyContent: "center" },
-  goalText: { fontSize: 14, fontWeight: "700", color: "#fff", marginBottom: 4 },
-  goalMeta: { fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: "600", textTransform: "capitalize" },
+  quickItem: { width: (width - 32 - 10) / 2, backgroundColor: Colors.white, borderRadius: 18, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 },
+  quickIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  quickLabel: { fontSize: 14, fontWeight: "800", color: Colors.dark, flex: 1 },
+
+  /* goal */
+  goalCard: { backgroundColor: Colors.white, borderRadius: 18, padding: 16, flexDirection: "row", alignItems: "center", gap: 14 },
+  goalIcon: { width: 46, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  goalLabel: { fontSize: 10, fontWeight: "800", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 },
+  goalText: { fontSize: 14, fontWeight: "700", color: Colors.dark, lineHeight: 20 },
+  goalMeta: { fontSize: 11, color: Colors.textMuted, fontWeight: "600", marginTop: 3, textTransform: "capitalize" },
 });

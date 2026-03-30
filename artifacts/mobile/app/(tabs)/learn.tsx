@@ -110,7 +110,7 @@ export default function LearnPage() {
     <View style={styles.container}>
       {/* GRADIENT HEADER */}
       <LinearGradient
-        colors={["#0A1628", "#0D2045", "#1A3066"]}
+        colors={["#4C6FFF", "#7C47FF"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.headerGrad, { paddingTop: Platform.OS === "web" ? 60 : insets.top + 12 }]}
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   lessonDesc: { fontSize: 11, color: Colors.textMuted, fontWeight: "500" },
   lessonActions: { flexDirection: "row", gap: 6, alignItems: "center" },
   actionPill: { backgroundColor: Colors.primaryLight, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
-  actionPillOrange: { backgroundColor: Colors.accentLight },
+  actionPillOrange: { backgroundColor: Colors.amberLight },
   actionPillText: { fontSize: 10, fontWeight: "800", color: Colors.dark },
   addIconBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: Colors.background, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Colors.border },
   addLessonRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },

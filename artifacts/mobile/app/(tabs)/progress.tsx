@@ -100,7 +100,7 @@ export default function ProgressTab() {
     <View style={styles.container}>
       {/* ===== GRADIENT HEADER ===== */}
       <LinearGradient
-        colors={["#0A1628", "#0D2045", "#1A3066"]}
+        colors={["#4C6FFF", "#7C47FF"]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={[styles.headerGrad, { paddingTop: Platform.OS === "web" ? 60 : insets.top + 12 }]}
       >

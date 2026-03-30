@@ -1,45 +1,27 @@
 import { BlurView } from "expo-blur";
-import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import { SymbolView } from "expo-symbols";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>Home</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="learn">
-        <Icon sf={{ default: "book", selected: "book.fill" }} />
-        <Label>Belajar</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="progress">
-        <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>Progress</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="profile">
-        <Icon sf={{ default: "person", selected: "person.fill" }} />
-        <Label>Profil</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
-
-function TabIconWrap({ focused, children }: { focused: boolean; children: React.ReactNode }) {
+function TabIcon({
+  name,
+  focused,
+  color,
+}: {
+  name: React.ComponentProps<typeof Feather>["name"];
+  focused: boolean;
+  color: string;
+}) {
   return (
     <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-      {children}
+      <Feather name={name} size={21} color={color} />
     </View>
   );
 }
 
-function ClassicTabLayout() {
+export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
@@ -53,21 +35,22 @@ function ClassicTabLayout() {
           backgroundColor: Colors.white,
           borderTopWidth: 0,
           elevation: 0,
-          height: isWeb ? 64 : 80,
-          paddingBottom: isWeb ? 8 : 18,
-          paddingTop: 8,
-          shadowColor: Colors.dark,
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
+          height: isWeb ? 60 : 82,
+          paddingBottom: isWeb ? 8 : 20,
+          paddingTop: 6,
+          shadowColor: "#0F1F3D",
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.07,
+          shadowRadius: 20,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: "700",
+          letterSpacing: 0.2,
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill} />
           ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.white }]} />
           ),
@@ -77,78 +60,79 @@ function ClassicTabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "house.fill" : "house"} tintColor={color} size={22} />
-            ) : (
-              <TabIconWrap focused={focused}>
-                <Feather name="home" size={20} color={color} />
-              </TabIconWrap>
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="home" focused={focused} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="learn"
         options={{
-          title: "Belajar",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "book.fill" : "book"} tintColor={color} size={22} />
-            ) : (
-              <TabIconWrap focused={focused}>
-                <Feather name="book-open" size={20} color={color} />
-              </TabIconWrap>
-            ),
+          title: "Kursus",
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="book-open" focused={focused} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="practice"
+        options={{
+          title: "Latihan",
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.centerBtn, focused && styles.centerBtnActive]}>
+              <Feather name="zap" size={22} color={focused ? "#fff" : Colors.textMuted} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
           title: "Progress",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name="chart.bar" tintColor={color} size={22} />
-            ) : (
-              <TabIconWrap focused={focused}>
-                <Feather name="bar-chart-2" size={20} color={color} />
-              </TabIconWrap>
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="bar-chart-2" focused={focused} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profil",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={22} />
-            ) : (
-              <TabIconWrap focused={focused}>
-                <Feather name="user" size={20} color={color} />
-              </TabIconWrap>
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="user" focused={focused} color={color} />
+          ),
         }}
       />
     </Tabs>
   );
 }
 
-export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
-}
-
 const styles = StyleSheet.create({
   iconWrap: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 32,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   iconWrapActive: {
     backgroundColor: Colors.primaryLight,
+  },
+  centerBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
+  centerBtnActive: {
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });
