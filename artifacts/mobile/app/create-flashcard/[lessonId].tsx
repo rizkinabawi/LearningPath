@@ -4,15 +4,17 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   Alert,
   StyleSheet,
   Platform,
+  Image,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
-import { X, Plus, Trash2, ChevronDown } from "lucide-react-native";
+import { X, Trash2, ChevronDown, ImagePlus, Image as ImageIcon } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { Button } from "@/components/Button";
 import {
   getFlashcards,
@@ -23,6 +25,25 @@ import {
 } from "@/utils/storage";
 import Colors from "@/constants/colors";
 
+const IMAGE_DIR = (FileSystem.documentDirectory ?? "") + "flashcard-images/";
+
+const ensureImageDir = async () => {
+  if (Platform.OS === "web") return;
+  const info = await FileSystem.getInfoAsync(IMAGE_DIR);
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(IMAGE_DIR, { intermediates: true });
+  }
+};
+
+const saveImageToLocal = async (uri: string, id: string): Promise<string> => {
+  if (Platform.OS === "web") return uri;
+  await ensureImageDir();
+  const ext = uri.split(".").pop()?.split("?")[0] ?? "jpg";
+  const dest = IMAGE_DIR + id + "." + ext;
+  await FileSystem.copyAsync({ from: uri, to: dest });
+  return dest;
+};
+
 export default function CreateFlashcardScreen() {
   const { lessonId } = useLocalSearchParams<{ lessonId: string }>();
   const router = useRouter();
@@ -31,6 +52,7 @@ export default function CreateFlashcardScreen() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [tag, setTag] = useState("");
+  const [imageUri, setImageUri] = useState<string | null>(null);
   const [existing, setExisting] = useState<Flashcard[]>([]);
   const [loading, setLoading] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -43,18 +65,46 @@ export default function CreateFlashcardScreen() {
     })();
   }, [lessonId]);
 
+  const pickImage = async () => {
+    if (Platform.OS !== "web") {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Izin Diperlukan", "Izinkan akses galeri untuk upload gambar.");
+        return;
+      }
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
   const handleSave = async () => {
     if (!question.trim() || !answer.trim()) {
-      Alert.alert("Missing Fields", "Question and answer are required.");
+      Alert.alert("Lengkapi Form", "Pertanyaan dan jawaban wajib diisi.");
       return;
     }
     setLoading(true);
+    const id = generateId();
+    let savedImage: string | undefined;
+    if (imageUri) {
+      try {
+        savedImage = await saveImageToLocal(imageUri, id);
+      } catch {
+        savedImage = imageUri;
+      }
+    }
     const card: Flashcard = {
-      id: generateId(),
+      id,
       lessonId: lessonId ?? "",
       question: question.trim(),
       answer: answer.trim(),
       tag: tag.trim(),
+      image: savedImage,
       createdAt: new Date().toISOString(),
     };
     await saveFlashcard(card);
@@ -62,8 +112,9 @@ export default function CreateFlashcardScreen() {
     setQuestion("");
     setAnswer("");
     setTag("");
+    setImageUri(null);
     setLoading(false);
-    Alert.alert("Saved!", "Flashcard added successfully.");
+    Alert.alert("Tersimpan!", "Flashcard berhasil ditambahkan.");
   };
 
   const handleDelete = async (id: string) => {
@@ -93,9 +144,9 @@ export default function CreateFlashcardScreen() {
       }
       setImportJson("");
       setShowImport(false);
-      Alert.alert("Imported", `${count} flashcard(s) added.`);
+      Alert.alert("Berhasil Import", `${count} flashcard ditambahkan.`);
     } catch {
-      Alert.alert("Invalid JSON", "Please paste valid JSON array of {question, answer, tag?}");
+      Alert.alert("JSON Tidak Valid", 'Format: [{"question":"...","answer":"...","tag":"..."}]');
     }
   };
 
@@ -114,21 +165,21 @@ export default function CreateFlashcardScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Add Flashcards</Text>
+        <Text style={styles.headerTitle}>Tambah Flashcard</Text>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
           <X size={20} color={Colors.black} />
         </TouchableOpacity>
       </View>
       <Text style={styles.count}>
-        {existing.length} card{existing.length !== 1 ? "s" : ""} in this lesson
+        {existing.length} kartu di pelajaran ini
       </Text>
 
       {/* Form */}
       <View style={styles.form}>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Question</Text>
+          <Text style={styles.fieldLabel}>Pertanyaan</Text>
           <TextInput
-            placeholder="What is JSX?"
+            placeholder="Contoh: Apa itu JSX?"
             value={question}
             onChangeText={setQuestion}
             style={styles.input}
@@ -137,9 +188,9 @@ export default function CreateFlashcardScreen() {
           />
         </View>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Answer</Text>
+          <Text style={styles.fieldLabel}>Jawaban</Text>
           <TextInput
-            placeholder="JSX is a syntax extension..."
+            placeholder="Contoh: JSX adalah ekstensi sintaks..."
             value={answer}
             onChangeText={setAnswer}
             style={[styles.input, { height: 80, textAlignVertical: "top" }]}
@@ -148,17 +199,51 @@ export default function CreateFlashcardScreen() {
           />
         </View>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Tag (optional)</Text>
+          <Text style={styles.fieldLabel}>Tag (opsional)</Text>
           <TextInput
-            placeholder="e.g. fundamentals"
+            placeholder="Contoh: dasar, syntax"
             value={tag}
             onChangeText={setTag}
             style={styles.input}
             placeholderTextColor={Colors.textMuted}
           />
         </View>
+
+        {/* Image Picker */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Gambar (opsional)</Text>
+          <TouchableOpacity
+            onPress={pickImage}
+            style={styles.imagePicker}
+            activeOpacity={0.75}
+          >
+            {imageUri ? (
+              <Image
+                source={{ uri: imageUri }}
+                style={styles.imagePreview}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <ImagePlus size={28} color={Colors.textMuted} />
+                <Text style={styles.imagePlaceholderText}>
+                  Tap untuk upload gambar
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          {imageUri && (
+            <TouchableOpacity
+              onPress={() => setImageUri(null)}
+              style={styles.removeImage}
+            >
+              <Text style={styles.removeImageText}>Hapus gambar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         <Button
-          label="Add Flashcard"
+          label="Tambah Flashcard"
           loading={loading}
           onPress={handleSave}
           size="lg"
@@ -171,18 +256,14 @@ export default function CreateFlashcardScreen() {
         style={styles.importToggle}
         onPress={() => setShowImport(!showImport)}
       >
-        <Text style={styles.importToggleText}>Import from JSON (AI-generated)</Text>
-        <ChevronDown
-          size={16}
-          color={Colors.primary}
-          style={{ transform: [{ rotate: showImport ? "180deg" : "0deg" }] }}
-        />
+        <Text style={styles.importToggleText}>Import dari JSON (hasil AI)</Text>
+        <ChevronDown size={16} color={Colors.primary} />
       </TouchableOpacity>
 
       {showImport && (
         <View style={styles.importBox}>
           <Text style={styles.importHint}>
-            Paste a JSON array: {`[{"question":"...","answer":"...","tag":"..."}]`}
+            Format: {`[{"question":"...","answer":"...","tag":"..."}]`}
           </Text>
           <TextInput
             value={importJson}
@@ -204,9 +285,16 @@ export default function CreateFlashcardScreen() {
       {/* Existing cards */}
       {existing.length > 0 && (
         <View style={styles.existingSection}>
-          <Text style={styles.sectionTitle}>Existing Flashcards</Text>
+          <Text style={styles.sectionTitle}>Flashcard yang Ada</Text>
           {existing.map((card) => (
             <View key={card.id} style={styles.cardRow}>
+              {card.image && (
+                <Image
+                  source={{ uri: card.image }}
+                  style={styles.cardThumb}
+                  resizeMode="cover"
+                />
+              )}
               <View style={{ flex: 1 }}>
                 {card.tag ? (
                   <Text style={styles.cardTag}>{card.tag}</Text>
@@ -216,10 +304,10 @@ export default function CreateFlashcardScreen() {
               </View>
               <TouchableOpacity
                 onPress={() => {
-                  Alert.alert("Delete", "Delete this flashcard?", [
-                    { text: "Cancel", style: "cancel" },
+                  Alert.alert("Hapus", "Hapus flashcard ini?", [
+                    { text: "Batal", style: "cancel" },
                     {
-                      text: "Delete",
+                      text: "Hapus",
                       style: "destructive",
                       onPress: () => handleDelete(card.id),
                     },
@@ -246,7 +334,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 4,
   },
-  headerTitle: { fontSize: 24, fontWeight: "900", color: Colors.black },
+  headerTitle: { fontSize: 22, fontWeight: "900", color: Colors.black },
   closeBtn: {
     width: 38,
     height: 38,
@@ -280,6 +368,39 @@ const styles = StyleSheet.create({
     color: Colors.black,
     borderWidth: 1,
     borderColor: Colors.borderLight,
+  },
+  imagePicker: {
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderStyle: "dashed",
+    backgroundColor: Colors.surface,
+  },
+  imagePreview: {
+    width: "100%",
+    height: 180,
+    borderRadius: 14,
+  },
+  imagePlaceholder: {
+    height: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  imagePlaceholderText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    fontWeight: "600",
+  },
+  removeImage: {
+    alignSelf: "flex-end",
+    marginTop: 4,
+  },
+  removeImageText: {
+    fontSize: 12,
+    color: Colors.danger,
+    fontWeight: "700",
   },
   importToggle: {
     flexDirection: "row",
@@ -319,6 +440,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
     gap: 12,
+  },
+  cardThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
   },
   cardTag: {
     fontSize: 10,

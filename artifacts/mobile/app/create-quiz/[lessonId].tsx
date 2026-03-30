@@ -7,11 +7,14 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  Image,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
-import { X, Trash2, ChevronDown } from "lucide-react-native";
+import { X, Trash2, ChevronDown, ImagePlus } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { Button } from "@/components/Button";
 import {
   getQuizzes,
@@ -22,6 +25,25 @@ import {
 } from "@/utils/storage";
 import Colors from "@/constants/colors";
 
+const IMAGE_DIR = (FileSystem.documentDirectory ?? "") + "quiz-images/";
+
+const ensureImageDir = async () => {
+  if (Platform.OS === "web") return;
+  const info = await FileSystem.getInfoAsync(IMAGE_DIR);
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(IMAGE_DIR, { intermediates: true });
+  }
+};
+
+const saveImageToLocal = async (uri: string, id: string): Promise<string> => {
+  if (Platform.OS === "web") return uri;
+  await ensureImageDir();
+  const ext = uri.split(".").pop()?.split("?")[0] ?? "jpg";
+  const dest = IMAGE_DIR + id + "." + ext;
+  await FileSystem.copyAsync({ from: uri, to: dest });
+  return dest;
+};
+
 export default function CreateQuizScreen() {
   const { lessonId } = useLocalSearchParams<{ lessonId: string }>();
   const router = useRouter();
@@ -30,6 +52,7 @@ export default function CreateQuizScreen() {
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", "", "", ""]);
   const [correctOption, setCorrectOption] = useState<number | null>(null);
+  const [imageUri, setImageUri] = useState<string | null>(null);
   const [existing, setExisting] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -42,28 +65,56 @@ export default function CreateQuizScreen() {
     })();
   }, [lessonId]);
 
+  const pickImage = async () => {
+    if (Platform.OS !== "web") {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Izin Diperlukan", "Izinkan akses galeri untuk upload gambar.");
+        return;
+      }
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
   const handleSave = async () => {
     if (!question.trim()) {
-      Alert.alert("Missing Question", "Please enter a question.");
+      Alert.alert("Isi Pertanyaan", "Pertanyaan tidak boleh kosong.");
       return;
     }
     const filledOptions = options.filter((o) => o.trim());
     if (filledOptions.length < 2) {
-      Alert.alert("Need Options", "Please provide at least 2 answer options.");
+      Alert.alert("Minimal 2 Pilihan", "Isi minimal 2 pilihan jawaban.");
       return;
     }
     if (correctOption === null || !options[correctOption]?.trim()) {
-      Alert.alert("Select Correct Answer", "Please mark the correct option.");
+      Alert.alert("Pilih Jawaban Benar", "Tandai salah satu pilihan sebagai jawaban benar.");
       return;
     }
     setLoading(true);
+    const id = generateId();
+    let savedImage: string | undefined;
+    if (imageUri) {
+      try {
+        savedImage = await saveImageToLocal(imageUri, id);
+      } catch {
+        savedImage = imageUri;
+      }
+    }
     const quiz: Quiz = {
-      id: generateId(),
+      id,
       lessonId: lessonId ?? "",
       question: question.trim(),
       options: options.filter((o) => o.trim()),
       answer: options[correctOption].trim(),
       type: "multiple-choice",
+      image: savedImage,
       createdAt: new Date().toISOString(),
     };
     await saveQuiz(quiz);
@@ -71,8 +122,9 @@ export default function CreateQuizScreen() {
     setQuestion("");
     setOptions(["", "", "", ""]);
     setCorrectOption(null);
+    setImageUri(null);
     setLoading(false);
-    Alert.alert("Saved!", "Quiz question added successfully.");
+    Alert.alert("Tersimpan!", "Soal berhasil ditambahkan.");
   };
 
   const handleDelete = async (id: string) => {
@@ -103,11 +155,11 @@ export default function CreateQuizScreen() {
       }
       setImportJson("");
       setShowImport(false);
-      Alert.alert("Imported", `${count} question(s) added.`);
+      Alert.alert("Berhasil Import", `${count} soal ditambahkan.`);
     } catch {
       Alert.alert(
-        "Invalid JSON",
-        'Paste a valid JSON array of {question, options: [...], answer}'
+        "JSON Tidak Valid",
+        'Format: [{"question":"...","options":["A","B","C","D"],"answer":"A"}]'
       );
     }
   };
@@ -127,21 +179,21 @@ export default function CreateQuizScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Add Quiz</Text>
+        <Text style={styles.headerTitle}>Tambah Soal Quiz</Text>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
           <X size={20} color={Colors.black} />
         </TouchableOpacity>
       </View>
       <Text style={styles.count}>
-        {existing.length} question{existing.length !== 1 ? "s" : ""} in this lesson
+        {existing.length} soal di pelajaran ini
       </Text>
 
       {/* Form */}
       <View style={styles.form}>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Question</Text>
+          <Text style={styles.fieldLabel}>Pertanyaan</Text>
           <TextInput
-            placeholder="What does useState return?"
+            placeholder="Contoh: Apa yang dikembalikan useState?"
             value={question}
             onChangeText={setQuestion}
             style={[styles.input, { height: 80, textAlignVertical: "top" }]}
@@ -150,8 +202,43 @@ export default function CreateQuizScreen() {
           />
         </View>
 
-        <Text style={styles.fieldLabel}>Answer Options</Text>
-        <Text style={styles.fieldHint}>Tap an option to mark it as correct</Text>
+        {/* Image Picker */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Gambar Soal (opsional)</Text>
+          <TouchableOpacity
+            onPress={pickImage}
+            style={styles.imagePicker}
+            activeOpacity={0.75}
+          >
+            {imageUri ? (
+              <Image
+                source={{ uri: imageUri }}
+                style={styles.imagePreview}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <ImagePlus size={28} color={Colors.textMuted} />
+                <Text style={styles.imagePlaceholderText}>
+                  Tap untuk upload gambar soal
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          {imageUri && (
+            <TouchableOpacity
+              onPress={() => setImageUri(null)}
+              style={styles.removeImage}
+            >
+              <Text style={styles.removeImageText}>Hapus gambar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Text style={styles.fieldLabel}>Pilihan Jawaban</Text>
+        <Text style={styles.fieldHint}>
+          Tap salah satu pilihan untuk menandai sebagai jawaban benar
+        </Text>
         {options.map((opt, idx) => (
           <TouchableOpacity
             key={idx}
@@ -178,7 +265,7 @@ export default function CreateQuizScreen() {
               </Text>
             </View>
             <TextInput
-              placeholder={`Option ${String.fromCharCode(65 + idx)}`}
+              placeholder={`Pilihan ${String.fromCharCode(65 + idx)}`}
               value={opt}
               onChangeText={(text) => {
                 const updated = [...options];
@@ -192,7 +279,7 @@ export default function CreateQuizScreen() {
         ))}
 
         <Button
-          label="Add Question"
+          label="Tambah Soal"
           loading={loading}
           onPress={handleSave}
           size="lg"
@@ -205,7 +292,7 @@ export default function CreateQuizScreen() {
         style={styles.importToggle}
         onPress={() => setShowImport(!showImport)}
       >
-        <Text style={styles.importToggleText}>Import from JSON (AI-generated)</Text>
+        <Text style={styles.importToggleText}>Import dari JSON (hasil AI)</Text>
         <ChevronDown size={16} color={Colors.primary} />
       </TouchableOpacity>
 
@@ -234,20 +321,27 @@ export default function CreateQuizScreen() {
       {/* Existing */}
       {existing.length > 0 && (
         <View style={styles.existingSection}>
-          <Text style={styles.sectionTitle}>Existing Questions</Text>
+          <Text style={styles.sectionTitle}>Soal yang Ada</Text>
           {existing.map((q, i) => (
             <View key={q.id} style={styles.questionRow}>
+              {q.image && (
+                <Image
+                  source={{ uri: q.image }}
+                  style={styles.cardThumb}
+                  resizeMode="cover"
+                />
+              )}
               <View style={{ flex: 1 }}>
-                <Text style={styles.questionNum}>Q{i + 1}</Text>
+                <Text style={styles.questionNum}>Soal {i + 1}</Text>
                 <Text style={styles.questionText}>{q.question}</Text>
                 <Text style={styles.questionAnswer}>✓ {q.answer}</Text>
               </View>
               <TouchableOpacity
                 onPress={() => {
-                  Alert.alert("Delete", "Delete this question?", [
-                    { text: "Cancel", style: "cancel" },
+                  Alert.alert("Hapus", "Hapus soal ini?", [
+                    { text: "Batal", style: "cancel" },
                     {
-                      text: "Delete",
+                      text: "Hapus",
                       style: "destructive",
                       onPress: () => handleDelete(q.id),
                     },
@@ -274,7 +368,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 4,
   },
-  headerTitle: { fontSize: 24, fontWeight: "900", color: Colors.black },
+  headerTitle: { fontSize: 22, fontWeight: "900", color: Colors.black },
   closeBtn: {
     width: 38,
     height: 38,
@@ -314,6 +408,39 @@ const styles = StyleSheet.create({
     color: Colors.black,
     borderWidth: 1,
     borderColor: Colors.borderLight,
+  },
+  imagePicker: {
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderStyle: "dashed",
+    backgroundColor: Colors.surface,
+  },
+  imagePreview: {
+    width: "100%",
+    height: 180,
+    borderRadius: 14,
+  },
+  imagePlaceholder: {
+    height: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  imagePlaceholderText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    fontWeight: "600",
+  },
+  removeImage: {
+    alignSelf: "flex-end",
+    marginTop: 4,
+  },
+  removeImageText: {
+    fontSize: 12,
+    color: Colors.danger,
+    fontWeight: "700",
   },
   optionRow: {
     flexDirection: "row",
@@ -395,6 +522,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
     gap: 12,
+  },
+  cardThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
   },
   questionNum: {
     fontSize: 10,

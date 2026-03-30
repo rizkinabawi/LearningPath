@@ -6,19 +6,11 @@ import {
   StyleSheet,
   Platform,
   Animated,
-  ScrollView,
-  Alert,
+  Image,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  RotateCcw,
-  Check,
-} from "lucide-react-native";
+import { X, Plus, RotateCcw, Check } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import {
   getFlashcards,
@@ -42,7 +34,7 @@ export default function FlashcardScreen() {
   const [completed, setCompleted] = useState<Record<string, "correct" | "wrong">>({});
   const [done, setDone] = useState(false);
 
-  const flipAnim = new Animated.Value(0);
+  const [flipAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
     (async () => {
@@ -66,14 +58,9 @@ export default function FlashcardScreen() {
   const handleAnswer = async (correct: boolean) => {
     const card = cards[currentIndex];
     Haptics.impactAsync(
-      correct
-        ? Haptics.ImpactFeedbackStyle.Light
-        : Haptics.ImpactFeedbackStyle.Medium
+      correct ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium
     );
-    setCompleted((prev) => ({
-      ...prev,
-      [card.id]: correct ? "correct" : "wrong",
-    }));
+    setCompleted((prev) => ({ ...prev, [card.id]: correct ? "correct" : "wrong" }));
 
     await saveProgress({
       id: generateId(),
@@ -110,17 +97,17 @@ export default function FlashcardScreen() {
   if (cards.length === 0) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyTitle}>No Flashcards</Text>
-        <Text style={styles.emptySub}>Add some flashcards to this lesson first.</Text>
+        <Text style={styles.emptyTitle}>Belum Ada Flashcard</Text>
+        <Text style={styles.emptySub}>Tambahkan flashcard ke pelajaran ini dulu.</Text>
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => router.push(`/create-flashcard/${lessonId}`)}
         >
           <Plus size={16} color={Colors.white} />
-          <Text style={styles.addBtnText}>Add Flashcards</Text>
+          <Text style={styles.addBtnText}>Tambah Flashcard</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
-          <Text style={styles.backLinkText}>Go Back</Text>
+          <Text style={styles.backLinkText}>Kembali</Text>
         </TouchableOpacity>
       </View>
     );
@@ -137,26 +124,23 @@ export default function FlashcardScreen() {
         ]}
       >
         <Text style={styles.resultEmoji}>{pct >= 80 ? "🎉" : pct >= 50 ? "👍" : "💪"}</Text>
-        <Text style={styles.resultTitle}>Session Complete!</Text>
+        <Text style={styles.resultTitle}>Sesi Selesai!</Text>
         <Text style={styles.resultScore}>{pct}%</Text>
-        <Text style={styles.resultSub}>
-          {correctCount} / {cards.length} correct
-        </Text>
-        <ProgressBar
-          value={pct}
-          color={pct >= 80 ? Colors.success : pct >= 50 ? Colors.warning : Colors.danger}
-          height={10}
-        />
+        <Text style={styles.resultSub}>{correctCount} / {cards.length} benar</Text>
+        <View style={{ width: "100%", marginVertical: 8 }}>
+          <ProgressBar
+            value={pct}
+            color={pct >= 80 ? Colors.success : pct >= 50 ? Colors.warning : Colors.danger}
+            height={10}
+          />
+        </View>
         <View style={styles.resultBtns}>
           <TouchableOpacity style={styles.restartBtn} onPress={handleRestart}>
             <RotateCcw size={16} color={Colors.white} />
-            <Text style={styles.restartBtnText}>Restart</Text>
+            <Text style={styles.restartBtnText}>Ulangi</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.doneBtn}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.doneBtnText}>Done</Text>
+          <TouchableOpacity style={styles.doneBtn} onPress={() => router.back()}>
+            <Text style={styles.doneBtnText}>Selesai</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -164,7 +148,7 @@ export default function FlashcardScreen() {
   }
 
   const card = cards[currentIndex];
-  const progress = ((currentIndex) / cards.length) * 100;
+  const progress = (currentIndex / cards.length) * 100;
 
   const frontInterpolate = flipAnim.interpolate({
     inputRange: [0, 1],
@@ -190,9 +174,7 @@ export default function FlashcardScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
           <X size={20} color={Colors.black} />
         </TouchableOpacity>
-        <Text style={styles.navCount}>
-          {currentIndex + 1} / {cards.length}
-        </Text>
+        <Text style={styles.navCount}>{currentIndex + 1} / {cards.length}</Text>
         <TouchableOpacity
           onPress={() => router.push(`/create-flashcard/${lessonId}`)}
           style={styles.navBtn}
@@ -202,20 +184,23 @@ export default function FlashcardScreen() {
       </View>
 
       {/* Progress */}
-      <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+      <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
         <ProgressBar value={progress} height={6} />
       </View>
 
+      {/* Tag */}
+      {card.tag ? (
+        <Text style={styles.cardTag}>{card.tag}</Text>
+      ) : null}
+
       {/* Card */}
       <View style={styles.cardWrap}>
-        {card.tag ? (
-          <Text style={styles.cardTag}>{card.tag}</Text>
-        ) : null}
         <TouchableOpacity
           onPress={handleFlip}
           activeOpacity={0.9}
           style={styles.cardOuter}
         >
+          {/* Front */}
           <Animated.View
             style={[
               styles.cardFace,
@@ -224,10 +209,19 @@ export default function FlashcardScreen() {
               { opacity: flipped ? 0 : 1 },
             ]}
           >
-            <Text style={styles.cardHint}>Question</Text>
+            {card.image && !flipped && (
+              <Image
+                source={{ uri: card.image }}
+                style={styles.cardImage}
+                resizeMode="cover"
+              />
+            )}
+            <Text style={styles.cardHint}>Pertanyaan</Text>
             <Text style={styles.cardText}>{card.question}</Text>
-            <Text style={styles.tapHint}>Tap to reveal answer</Text>
+            <Text style={styles.tapHint}>Tap untuk lihat jawaban</Text>
           </Animated.View>
+
+          {/* Back */}
           <Animated.View
             style={[
               styles.cardFace,
@@ -236,7 +230,14 @@ export default function FlashcardScreen() {
               { opacity: flipped ? 1 : 0, position: "absolute", top: 0 },
             ]}
           >
-            <Text style={styles.cardHint}>Answer</Text>
+            {card.image && flipped && (
+              <Image
+                source={{ uri: card.image }}
+                style={styles.cardImage}
+                resizeMode="cover"
+              />
+            )}
+            <Text style={styles.cardHint}>Jawaban</Text>
             <Text style={styles.cardText}>{card.answer}</Text>
           </Animated.View>
         </TouchableOpacity>
@@ -250,23 +251,19 @@ export default function FlashcardScreen() {
             style={[styles.answerBtn, styles.wrongBtn]}
           >
             <X size={24} color={Colors.danger} />
-            <Text style={[styles.answerBtnText, { color: Colors.danger }]}>
-              Wrong
-            </Text>
+            <Text style={[styles.answerBtnText, { color: Colors.danger }]}>Salah</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => handleAnswer(true)}
             style={[styles.answerBtn, styles.correctBtn]}
           >
             <Check size={24} color={Colors.success} />
-            <Text style={[styles.answerBtnText, { color: Colors.success }]}>
-              Got it!
-            </Text>
+            <Text style={[styles.answerBtnText, { color: Colors.success }]}>Benar!</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.flipHintWrap}>
-          <Text style={styles.flipHintText}>Tap the card to flip it</Text>
+          <Text style={styles.flipHintText}>Tap kartu untuk membaliknya</Text>
         </View>
       )}
     </View>
@@ -274,10 +271,7 @@ export default function FlashcardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
   center: {
     flex: 1,
     alignItems: "center",
@@ -287,12 +281,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   emptyTitle: { fontSize: 22, fontWeight: "900", color: Colors.black },
-  emptySub: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    textAlign: "center",
-    fontWeight: "500",
-  },
+  emptySub: { fontSize: 14, color: Colors.textMuted, textAlign: "center", fontWeight: "500" },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -311,7 +300,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   navBtn: {
     width: 40,
@@ -322,11 +311,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   navCount: { fontSize: 14, fontWeight: "800", color: Colors.textSecondary },
-  cardWrap: {
-    flex: 1,
-    paddingHorizontal: 20,
-    alignItems: "center",
-  },
   cardTag: {
     fontSize: 11,
     fontWeight: "800",
@@ -337,22 +321,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 20,
-    marginBottom: 14,
+    marginBottom: 10,
     alignSelf: "center",
+  },
+  cardWrap: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   cardOuter: {
     width: "100%",
-    height: 320,
+    flex: 1,
   },
   cardFace: {
     width: "100%",
     height: "100%",
     borderRadius: 28,
-    padding: 28,
+    padding: 24,
     alignItems: "center",
     justifyContent: "center",
-    gap: 16,
+    gap: 12,
     backfaceVisibility: "hidden",
+    overflow: "hidden",
   },
   cardFront: {
     backgroundColor: Colors.white,
@@ -364,6 +353,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#BFDBFE",
   },
+  cardImage: {
+    width: "100%",
+    height: 140,
+    borderRadius: 16,
+    marginBottom: 4,
+  },
   cardHint: {
     fontSize: 11,
     fontWeight: "800",
@@ -372,22 +367,18 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   cardText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
     color: Colors.black,
     textAlign: "center",
-    lineHeight: 30,
+    lineHeight: 28,
   },
-  tapHint: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontWeight: "500",
-  },
+  tapHint: { fontSize: 12, color: Colors.textMuted, fontWeight: "500" },
   answerBtns: {
     flexDirection: "row",
     paddingHorizontal: 20,
     gap: 14,
-    paddingTop: 20,
+    paddingTop: 16,
   },
   answerBtn: {
     flex: 1,
@@ -395,20 +386,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 18,
+    paddingVertical: 16,
     borderRadius: 20,
     borderWidth: 2,
   },
-  wrongBtn: {
-    backgroundColor: Colors.dangerLight,
-    borderColor: "#FCA5A5",
-  },
-  correctBtn: {
-    backgroundColor: Colors.successLight,
-    borderColor: "#86EFAC",
-  },
+  wrongBtn: { backgroundColor: Colors.dangerLight, borderColor: "#FCA5A5" },
+  correctBtn: { backgroundColor: Colors.successLight, borderColor: "#86EFAC" },
   answerBtnText: { fontSize: 16, fontWeight: "800" },
-  flipHintWrap: { paddingTop: 20, alignItems: "center" },
+  flipHintWrap: { paddingTop: 16, alignItems: "center" },
   flipHintText: { fontSize: 13, color: Colors.textMuted, fontWeight: "500" },
   resultWrap: {
     flex: 1,
