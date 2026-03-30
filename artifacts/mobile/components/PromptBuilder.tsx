@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: "900",
-    color: Colors.black,
+    color: Colors.dark,
   },
   headerSub: {
     fontSize: 13,
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 15,
     fontWeight: "600",
-    color: Colors.black,
+    color: Colors.dark,
     borderWidth: 1.5,
     borderColor: Colors.primary,
   },
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: Colors.black,
+    backgroundColor: Colors.dark,
     paddingVertical: 12,
     borderRadius: 12,
   },
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 8,
     borderWidth: 1.5,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
     gap: 12,
   },
   templateCardActive: {
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   templateTitle: {
     fontSize: 14,
     fontWeight: "800",
-    color: Colors.black,
+    color: Colors.dark,
     marginBottom: 2,
   },
   templateType: {

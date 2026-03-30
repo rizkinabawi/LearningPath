@@ -167,7 +167,7 @@ export default function CreateFlashcardScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Tambah Flashcard</Text>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <X size={20} color={Colors.black} />
+          <X size={20} color={Colors.dark} />
         </TouchableOpacity>
       </View>
       <Text style={styles.count}>
@@ -334,12 +334,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 4,
   },
-  headerTitle: { fontSize: 22, fontWeight: "900", color: Colors.black },
+  headerTitle: { fontSize: 22, fontWeight: "900", color: Colors.dark },
   closeBtn: {
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -365,9 +365,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     fontWeight: "600",
-    color: Colors.black,
+    color: Colors.dark,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
   },
   imagePicker: {
     borderRadius: 16,
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.border,
     borderStyle: "dashed",
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
   },
   imagePreview: {
     width: "100%",
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
+    borderTopColor: Colors.border,
     marginBottom: 8,
   },
   importToggleText: {
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "900",
-    color: Colors.black,
+    color: Colors.dark,
     marginBottom: 12,
   },
   cardRow: {
@@ -438,14 +438,14 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
     gap: 12,
   },
   cardThumb: {
     width: 56,
     height: 56,
     borderRadius: 10,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
   },
   cardTag: {
     fontSize: 10,
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   cardQ: {
     fontSize: 14,
     fontWeight: "700",
-    color: Colors.black,
+    color: Colors.dark,
     marginBottom: 4,
   },
   cardA: { fontSize: 13, color: Colors.textSecondary, fontWeight: "500" },

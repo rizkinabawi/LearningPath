@@ -6,11 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X, AlertCircle, CheckCircle, RefreshCcw } from "lucide-react-native";
+import { Feather } from "@expo/vector-icons";
 import {
   getWrongAnswers,
   getFlashcards,
@@ -19,7 +18,7 @@ import {
   type Flashcard,
   type Quiz,
 } from "@/utils/storage";
-import Colors from "@/constants/colors";
+import Colors, { shadow } from "@/constants/colors";
 
 type ReviewItem = {
   progress: Progress;
@@ -37,7 +36,6 @@ export default function MistakesReview() {
     (async () => {
       const wrongs = await getWrongAnswers();
       const reviewItems: ReviewItem[] = [];
-
       for (const p of wrongs) {
         if (p.flashcardId) {
           const allCards = await getFlashcards();
@@ -49,7 +47,6 @@ export default function MistakesReview() {
           reviewItems.push({ progress: p, content: quiz, type: "quiz" });
         }
       }
-
       setItems(reviewItems.filter((i) => i.content));
       setLoading(false);
     })();
@@ -64,33 +61,30 @@ export default function MistakesReview() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Mistakes Review</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Feather name="arrow-left" size={20} color={Colors.dark} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Review Kesalahan</Text>
           <Text style={styles.headerSub}>
-            {items.length} item{items.length !== 1 ? "s" : ""} to re-learn
+            {loading ? "Memuat..." : `${items.length} soal untuk dipelajari ulang`}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <X size={20} color={Colors.black} />
-        </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>Memuat...</Text>
         </View>
       ) : items.length === 0 ? (
         <View style={styles.center}>
-          <CheckCircle size={56} color={Colors.success} />
-          <Text style={styles.emptyTitle}>All Clear!</Text>
+          <Text style={{ fontSize: 72 }}>🏆</Text>
+          <Text style={styles.emptyTitle}>Sempurna!</Text>
           <Text style={styles.emptySub}>
-            No mistakes to review. Keep up the great work!
+            Tidak ada kesalahan untuk direview. Pertahankan!
           </Text>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.backBtnText}>Go Back</Text>
+          <TouchableOpacity style={styles.ctaBtn} onPress={() => router.back()}>
+            <Text style={styles.ctaBtnText}>Kembali</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -101,65 +95,68 @@ export default function MistakesReview() {
           {items.map((item, i) => {
             const { content, type, progress } = item;
             if (!content) return null;
+            const isFlashcard = type === "flashcard";
+            const card = isFlashcard ? (content as Flashcard) : null;
+            const quiz = !isFlashcard ? (content as Quiz) : null;
 
-            if (type === "flashcard") {
-              const card = content as Flashcard;
-              return (
-                <View key={progress.id ?? i} style={styles.card}>
-                  <View style={styles.cardBadge}>
-                    <AlertCircle size={14} color={Colors.danger} />
-                    <Text style={styles.cardBadgeText}>Flashcard</Text>
-                  </View>
-                  <Text style={styles.cardQ}>{card.question}</Text>
-                  <View style={styles.divider} />
-                  <Text style={styles.answerLabel}>Correct Answer</Text>
-                  <Text style={styles.cardA}>{card.answer}</Text>
-                  {progress.userAnswer ? (
-                    <>
-                      <Text style={styles.answerLabel}>Your Answer</Text>
-                      <Text style={styles.yourAnswer}>{progress.userAnswer}</Text>
-                    </>
-                  ) : null}
+            return (
+              <View key={progress.id ?? i} style={styles.card}>
+                {/* Badge */}
+                <View
+                  style={[
+                    styles.badge,
+                    { backgroundColor: isFlashcard ? Colors.primaryLight : Colors.accentLight },
+                  ]}
+                >
+                  <Text style={{ fontSize: 12 }}>{isFlashcard ? "🃏" : "❓"}</Text>
+                  <Text
+                    style={[
+                      styles.badgeText,
+                      { color: isFlashcard ? Colors.primaryDark : "#B45309" },
+                    ]}
+                  >
+                    {isFlashcard ? "Flashcard" : "Quiz"}
+                  </Text>
                 </View>
-              );
-            } else {
-              const quiz = content as Quiz;
-              return (
-                <View key={progress.id ?? i} style={styles.card}>
-                  <View style={styles.cardBadge}>
-                    <AlertCircle size={14} color={Colors.warning} />
-                    <Text style={[styles.cardBadgeText, { color: Colors.warning }]}>
-                      Quiz
-                    </Text>
-                  </View>
-                  <Text style={styles.cardQ}>{quiz.question}</Text>
-                  <View style={styles.divider} />
-                  <Text style={styles.answerLabel}>Correct Answer</Text>
-                  <Text style={styles.cardA}>{quiz.answer}</Text>
-                  {progress.userAnswer && progress.userAnswer !== quiz.answer ? (
-                    <>
-                      <Text style={styles.answerLabel}>Your Answer</Text>
-                      <Text style={styles.yourAnswer}>{progress.userAnswer}</Text>
-                    </>
-                  ) : null}
+
+                {/* Question */}
+                <Text style={styles.question}>
+                  {isFlashcard ? card!.question : quiz!.question}
+                </Text>
+
+                <View style={styles.divider} />
+
+                {/* Correct answer */}
+                <Text style={styles.answerLabel}>Jawaban Benar</Text>
+                <Text style={styles.correctAnswer}>
+                  {isFlashcard ? card!.answer : quiz!.answer}
+                </Text>
+
+                {/* User's wrong answer */}
+                {progress.userAnswer && progress.userAnswer !== (isFlashcard ? card!.answer : quiz!.answer) && (
+                  <>
+                    <Text style={styles.answerLabel}>Jawaban Kamu</Text>
+                    <Text style={styles.wrongAnswer}>{progress.userAnswer}</Text>
+                  </>
+                )}
+
+                {/* Quiz options */}
+                {quiz && (
                   <View style={styles.optionsWrap}>
                     {quiz.options.map((opt, idx) => (
                       <View
                         key={idx}
                         style={[
                           styles.optionChip,
-                          opt === quiz.answer && styles.optionChipCorrect,
-                          opt === progress.userAnswer &&
-                            opt !== quiz.answer &&
-                            styles.optionChipWrong,
+                          opt === quiz.answer && styles.optionCorrect,
+                          opt === progress.userAnswer && opt !== quiz.answer && styles.optionWrong,
                         ]}
                       >
                         <Text
                           style={[
-                            styles.optionChipText,
-                            opt === quiz.answer && { color: Colors.success },
-                            opt === progress.userAnswer &&
-                              opt !== quiz.answer && { color: Colors.danger },
+                            styles.optionText,
+                            opt === quiz.answer && { color: Colors.success, fontWeight: "800" },
+                            opt === progress.userAnswer && opt !== quiz.answer && { color: Colors.danger },
                           ]}
                         >
                           {opt}
@@ -167,9 +164,9 @@ export default function MistakesReview() {
                       </View>
                     ))}
                   </View>
-                </View>
-              );
-            }
+                )}
+              </View>
+            );
           })}
         </ScrollView>
       )}
@@ -181,79 +178,63 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 14,
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
-  headerTitle: { fontSize: 26, fontWeight: "900", color: Colors.black },
-  headerSub: { fontSize: 13, color: Colors.textMuted, fontWeight: "600", marginTop: 2 },
-  closeBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: Colors.surface,
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: Colors.white,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
+  headerTitle: { fontSize: 22, fontWeight: "900", color: Colors.dark },
+  headerSub: { fontSize: 12, color: Colors.textMuted, fontWeight: "600", marginTop: 1 },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    padding: 28,
     gap: 10,
   },
-  loadingText: { fontSize: 16, color: Colors.textMuted, fontWeight: "600" },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: "900",
-    color: Colors.black,
-    marginTop: 12,
+  loadingText: { fontSize: 15, color: Colors.textMuted, fontWeight: "600" },
+  emptyTitle: { fontSize: 26, fontWeight: "900", color: Colors.dark, marginTop: 8 },
+  emptySub: { fontSize: 14, color: Colors.textMuted, textAlign: "center", fontWeight: "500", lineHeight: 22 },
+  ctaBtn: {
+    marginTop: 8,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 999,
   },
-  emptySub: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    textAlign: "center",
-    fontWeight: "500",
-    lineHeight: 20,
-  },
-  backBtn: {
-    marginTop: 12,
-    backgroundColor: Colors.black,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 14,
-  },
-  backBtnText: { color: Colors.white, fontWeight: "800", fontSize: 14 },
+  ctaBtnText: { color: Colors.white, fontWeight: "800", fontSize: 15 },
   card: {
     backgroundColor: Colors.white,
     borderRadius: 20,
     padding: 18,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
     gap: 8,
+    ...shadow,
+    shadowOpacity: 0.06,
   },
-  cardBadge: {
+  badge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     alignSelf: "flex-start",
-    backgroundColor: Colors.dangerLight,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 999,
     marginBottom: 4,
   },
-  cardBadgeText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: Colors.danger,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  cardQ: { fontSize: 16, fontWeight: "700", color: Colors.black },
-  divider: { height: 1, backgroundColor: Colors.borderLight },
+  badgeText: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1 },
+  question: { fontSize: 16, fontWeight: "700", color: Colors.dark, lineHeight: 24 },
+  divider: { height: 1, backgroundColor: Colors.border },
   answerLabel: {
     fontSize: 10,
     fontWeight: "800",
@@ -261,28 +242,18 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  cardA: { fontSize: 15, fontWeight: "700", color: Colors.success },
-  yourAnswer: { fontSize: 14, fontWeight: "600", color: Colors.danger },
+  correctAnswer: { fontSize: 15, fontWeight: "700", color: Colors.success },
+  wrongAnswer: { fontSize: 14, fontWeight: "600", color: Colors.danger },
   optionsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
   optionChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: Colors.surface,
+    borderRadius: 999,
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
   },
-  optionChipCorrect: {
-    backgroundColor: Colors.successLight,
-    borderColor: Colors.success,
-  },
-  optionChipWrong: {
-    backgroundColor: Colors.dangerLight,
-    borderColor: Colors.danger,
-  },
-  optionChipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-  },
+  optionCorrect: { backgroundColor: Colors.successLight, borderColor: Colors.success },
+  optionWrong: { backgroundColor: Colors.dangerLight, borderColor: Colors.danger },
+  optionText: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary },
 });

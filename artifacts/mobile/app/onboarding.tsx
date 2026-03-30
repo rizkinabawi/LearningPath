@@ -4,24 +4,28 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Alert,
   StyleSheet,
   Platform,
+  Dimensions,
 } from "react-native";
-import { BookOpen, User as UserIcon, Target, Brain } from "lucide-react-native";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Button } from "@/components/Button";
 import { saveUser, getUser, generateId, type User } from "@/utils/storage";
 import { useRouter } from "expo-router";
 import Colors from "@/constants/colors";
 
+const { width } = Dimensions.get("window");
 type Level = "beginner" | "intermediate" | "advanced";
+const LEVELS: { val: Level; label: string; emoji: string }[] = [
+  { val: "beginner", label: "Pemula", emoji: "🌱" },
+  { val: "intermediate", label: "Menengah", emoji: "🚀" },
+  { val: "advanced", label: "Lanjut", emoji: "⭐" },
+];
 
 export default function Onboarding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [goal, setGoal] = useState("");
   const [topic, setTopic] = useState("");
@@ -36,135 +40,164 @@ export default function Onboarding() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!name.trim() || !goal.trim() || !topic.trim()) {
-      Alert.alert("Missing Info", "Please fill in all fields to start your journey!");
-      return;
-    }
+    if (!name.trim()) return;
     setLoading(true);
     const user: User = {
       id: generateId(),
       name: name.trim(),
-      goal: goal.trim(),
-      topic: topic.trim(),
+      goal: goal.trim() || "Belajar hal baru",
+      topic: topic.trim() || "Umum",
       level,
       createdAt: new Date().toISOString(),
     };
     await saveUser(user);
-    setLoading(false);
     router.replace("/(tabs)");
   };
 
-  const LevelButton = ({
-    val,
-    label,
-  }: {
-    val: Level;
-    label: string;
-  }) => (
-    <TouchableOpacity
-      onPress={() => setLevel(val)}
-      style={[
-        styles.levelBtn,
-        level === val && styles.levelBtnActive,
-      ]}
-      activeOpacity={0.7}
-    >
-      <Text
-        style={[
-          styles.levelBtnText,
-          level === val && styles.levelBtnTextActive,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+  const STEPS = [
+    {
+      emoji: "👋",
+      bg: "#EBF5FF",
+      title: "Find Your\nFavourite Lesson",
+      sub: "Rancang perjalanan belajarmu yang fleksibel dan personal bersama kami.",
+      cta: "Mulai",
+      field: null,
+    },
+    {
+      emoji: "📝",
+      bg: "#FFF8EB",
+      title: "Siapa namamu?",
+      sub: "Kami ingin menyapa dengan namamu setiap hari.",
+      cta: "Lanjut",
+      field: "name",
+    },
+    {
+      emoji: "🎯",
+      bg: "#E0FAF8",
+      title: "Apa targetmu?",
+      sub: "Tentukan topik dan level belajarmu sekarang.",
+      cta: "Mulai Belajar!",
+      field: "goal",
+    },
+  ];
+
+  const current = STEPS[step];
+  const isLast = step === STEPS.length - 1;
+
+  const handleNext = async () => {
+    if (step === 0) { setStep(1); return; }
+    if (step === 1) {
+      if (!name.trim()) return;
+      setStep(2);
+      return;
+    }
+    await handleSubmit();
+  };
 
   return (
     <KeyboardAwareScrollViewCompat
       style={styles.container}
       contentContainerStyle={[
         styles.content,
-        {
-          paddingTop:
-            Platform.OS === "web" ? 80 : insets.top + 24,
-          paddingBottom: 40,
-        },
+        { paddingTop: Platform.OS === "web" ? 60 : insets.top + 16, paddingBottom: 40 },
       ]}
       bottomOffset={16}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.logoWrap}>
-        <View style={styles.logo}>
-          <BookOpen size={40} color="#fff" />
-        </View>
-        <Text style={styles.title}>Ayo Mulai!</Text>
-        <Text style={styles.subtitle}>
-          Rancang perjalanan belajarmu yang fleksibel dan personal.
-        </Text>
+      {/* Skip */}
+      {step < 2 && (
+        <TouchableOpacity
+          onPress={() => router.replace("/(tabs)")}
+          style={styles.skipBtn}
+        >
+          <Text style={styles.skipText}>Skip</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Illustration circle */}
+      <View style={[styles.illustrationWrap, { backgroundColor: current.bg }]}>
+        <Text style={styles.illustrationEmoji}>{current.emoji}</Text>
       </View>
 
-      <View style={styles.form}>
-        <View style={styles.field}>
-          <View style={styles.labelRow}>
-            <UserIcon size={14} color={Colors.black} />
-            <Text style={styles.label}>Siapa namamu?</Text>
-          </View>
+      {/* Text */}
+      <Text style={styles.title}>{current.title}</Text>
+      <Text style={styles.sub}>{current.sub}</Text>
+
+      {/* Step-specific inputs */}
+      {step === 1 && (
+        <View style={styles.inputsWrap}>
           <TextInput
-            placeholder="Masukkan namamu"
+            placeholder="Nama kamu"
             value={name}
             onChangeText={setName}
             style={styles.input}
             placeholderTextColor={Colors.textMuted}
+            autoFocus
           />
         </View>
+      )}
 
-        <View style={styles.field}>
-          <View style={styles.labelRow}>
-            <Target size={14} color={Colors.black} />
-            <Text style={styles.label}>Apa target belajarmu?</Text>
-          </View>
+      {step === 2 && (
+        <View style={styles.inputsWrap}>
           <TextInput
-            placeholder="Contoh: Kuasai React Native, Lulus JLPT N3"
+            placeholder="Target belajar (misal: lulus JLPT N3)"
             value={goal}
             onChangeText={setGoal}
             style={styles.input}
             placeholderTextColor={Colors.textMuted}
           />
-        </View>
-
-        <View style={styles.field}>
-          <View style={styles.labelRow}>
-            <Brain size={14} color={Colors.black} />
-            <Text style={styles.label}>Topik utama yang ingin dipelajari?</Text>
-          </View>
           <TextInput
-            placeholder="Contoh: React Native, Bahasa Jepang"
+            placeholder="Topik utama (misal: React Native)"
             value={topic}
             onChangeText={setTopic}
             style={styles.input}
             placeholderTextColor={Colors.textMuted}
           />
-        </View>
-
-        <View style={styles.field}>
-          <Text style={[styles.label, { marginBottom: 10 }]}>
-            Levelmu saat ini?
-          </Text>
+          <Text style={styles.levelLabel}>Level kamu saat ini</Text>
           <View style={styles.levelRow}>
-            <LevelButton val="beginner" label="Pemula" />
-            <LevelButton val="intermediate" label="Menengah" />
-            <LevelButton val="advanced" label="Lanjut" />
+            {LEVELS.map((l) => (
+              <TouchableOpacity
+                key={l.val}
+                onPress={() => setLevel(l.val)}
+                style={[
+                  styles.levelChip,
+                  level === l.val && styles.levelChipActive,
+                ]}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.levelEmoji}>{l.emoji}</Text>
+                <Text
+                  style={[
+                    styles.levelText,
+                    level === l.val && styles.levelTextActive,
+                  ]}
+                >
+                  {l.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
+      )}
 
-        <Button
-          size="lg"
-          loading={loading}
-          onPress={handleSubmit}
-          label="Mulai Belajar 🚀"
-          style={styles.submitBtn}
-        />
+      {/* CTA */}
+      <TouchableOpacity
+        onPress={handleNext}
+        style={[styles.ctaBtn, loading && styles.ctaBtnDisabled]}
+        activeOpacity={0.85}
+        disabled={loading}
+      >
+        <Text style={styles.ctaText}>{current.cta}</Text>
+      </TouchableOpacity>
+
+      {/* Dots */}
+      <View style={styles.dots}>
+        {STEPS.map((_, i) => (
+          <View
+            key={i}
+            style={[styles.dot, i === step && styles.dotActive]}
+          />
+        ))}
       </View>
     </KeyboardAwareScrollViewCompat>
   );
@@ -172,80 +205,93 @@ export default function Onboarding() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  content: { paddingHorizontal: 24 },
-  logoWrap: { alignItems: "center", marginBottom: 36 },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 28,
-    backgroundColor: Colors.black,
+  content: { paddingHorizontal: 28, alignItems: "center" },
+  skipBtn: { alignSelf: "flex-end", marginBottom: 24 },
+  skipText: { fontSize: 14, fontWeight: "700", color: Colors.textMuted },
+  illustrationWrap: {
+    width: width * 0.6,
+    height: width * 0.6,
+    borderRadius: (width * 0.6) / 2,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 36,
   },
+  illustrationEmoji: { fontSize: 80 },
   title: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: "900",
-    color: Colors.black,
+    color: Colors.dark,
     textAlign: "center",
-    marginBottom: 8,
+    lineHeight: 38,
+    marginBottom: 14,
   },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.textMuted,
+  sub: {
+    fontSize: 14,
+    color: Colors.textSecondary,
     textAlign: "center",
+    lineHeight: 22,
     fontWeight: "500",
-    lineHeight: 24,
     paddingHorizontal: 8,
+    marginBottom: 32,
   },
-  form: { gap: 20 },
-  field: {},
-  labelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: Colors.black,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
+  inputsWrap: { width: "100%", gap: 12, marginBottom: 24 },
   input: {
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    backgroundColor: Colors.background,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    paddingHorizontal: 18,
+    paddingVertical: 15,
     fontSize: 15,
     fontWeight: "600",
-    color: Colors.black,
+    color: Colors.dark,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
   },
-  levelRow: {
-    flexDirection: "row",
-    gap: 10,
+  levelLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: Colors.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginTop: 4,
   },
-  levelBtn: {
+  levelRow: { flexDirection: "row", gap: 10 },
+  levelChip: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: Colors.border,
     backgroundColor: Colors.white,
     alignItems: "center",
+    gap: 4,
   },
-  levelBtnActive: {
-    borderColor: Colors.black,
-    backgroundColor: Colors.black,
+  levelChipActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
   },
-  levelBtnText: {
-    fontWeight: "700",
-    fontSize: 13,
-    color: Colors.textMuted,
+  levelEmoji: { fontSize: 20 },
+  levelText: { fontSize: 12, fontWeight: "700", color: Colors.textSecondary },
+  levelTextActive: { color: Colors.primaryDark },
+  ctaBtn: {
+    width: "100%",
+    height: 56,
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 28,
   },
-  levelBtnTextActive: { color: Colors.white },
-  submitBtn: { marginTop: 8, borderRadius: 20 },
+  ctaBtnDisabled: { opacity: 0.6 },
+  ctaText: { fontSize: 16, fontWeight: "900", color: Colors.white },
+  dots: { flexDirection: "row", gap: 8 },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.border,
+  },
+  dotActive: {
+    width: 24,
+    backgroundColor: Colors.primary,
+  },
 });

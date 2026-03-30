@@ -17,7 +17,7 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="learn">
         <Icon sf={{ default: "book", selected: "book.fill" }} />
-        <Label>Learn</Label>
+        <Label>Belajar</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="progress">
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
@@ -25,9 +25,17 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
-        <Label>Profile</Label>
+        <Label>Profil</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
+  );
+}
+
+function TabIconWrap({ focused, children }: { focused: boolean; children: React.ReactNode }) {
+  return (
+    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+      {children}
+    </View>
   );
 }
 
@@ -38,34 +46,31 @@ function ClassicTabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.tabActive,
+        tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.tabInactive,
         headerShown: false,
         tabBarStyle: {
-          position: "absolute",
-          backgroundColor: isIOS ? "transparent" : Colors.white,
-          borderTopWidth: isWeb ? 1 : 0,
-          borderTopColor: Colors.border,
+          backgroundColor: Colors.white,
+          borderTopWidth: 0,
           elevation: 0,
-          height: isWeb ? 84 : 80,
+          height: isWeb ? 64 : 80,
+          paddingBottom: isWeb ? 8 : 18,
+          paddingTop: 8,
+          shadowColor: Colors.dark,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: "700",
-          textTransform: "capitalize",
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView
-              intensity={100}
-              tint="light"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View
-              style={[StyleSheet.absoluteFill, { backgroundColor: Colors.white }]}
-            />
-          ) : null,
+            <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.white }]} />
+          ),
       }}
     >
       <Tabs.Screen
@@ -74,29 +79,25 @@ function ClassicTabLayout() {
           title: "Home",
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView
-                name={focused ? "house.fill" : "house"}
-                tintColor={color}
-                size={24}
-              />
+              <SymbolView name={focused ? "house.fill" : "house"} tintColor={color} size={22} />
             ) : (
-              <Feather name="home" size={22} color={color} />
+              <TabIconWrap focused={focused}>
+                <Feather name="home" size={20} color={color} />
+              </TabIconWrap>
             ),
         }}
       />
       <Tabs.Screen
         name="learn"
         options={{
-          title: "Learn",
+          title: "Belajar",
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView
-                name={focused ? "book.fill" : "book"}
-                tintColor={color}
-                size={24}
-              />
+              <SymbolView name={focused ? "book.fill" : "book"} tintColor={color} size={22} />
             ) : (
-              <Feather name="book" size={22} color={color} />
+              <TabIconWrap focused={focused}>
+                <Feather name="book-open" size={20} color={color} />
+              </TabIconWrap>
             ),
         }}
       />
@@ -104,27 +105,27 @@ function ClassicTabLayout() {
         name="progress"
         options={{
           title: "Progress",
-          tabBarIcon: ({ color }) =>
+          tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView name="chart.bar" tintColor={color} size={24} />
+              <SymbolView name="chart.bar" tintColor={color} size={22} />
             ) : (
-              <Feather name="bar-chart-2" size={22} color={color} />
+              <TabIconWrap focused={focused}>
+                <Feather name="bar-chart-2" size={20} color={color} />
+              </TabIconWrap>
             ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "Profil",
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView
-                name={focused ? "person.fill" : "person"}
-                tintColor={color}
-                size={24}
-              />
+              <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={22} />
             ) : (
-              <Feather name="user" size={22} color={color} />
+              <TabIconWrap focused={focused}>
+                <Feather name="user" size={20} color={color} />
+              </TabIconWrap>
             ),
         }}
       />
@@ -138,3 +139,16 @@ export default function TabLayout() {
   }
   return <ClassicTabLayout />;
 }
+
+const styles = StyleSheet.create({
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconWrapActive: {
+    backgroundColor: Colors.primaryLight,
+  },
+});

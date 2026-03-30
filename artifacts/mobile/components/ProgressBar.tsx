@@ -14,21 +14,16 @@ export const ProgressBar = ({
   value,
   color = Colors.primary,
   backgroundColor = Colors.border,
-  height = 8,
+  height = 6,
   borderRadius = 999,
 }: ProgressBarProps) => {
-  const clampedValue = Math.min(100, Math.max(0, value));
+  const pct = Math.min(100, Math.max(0, value));
   return (
-    <View
-      style={[
-        styles.track,
-        { backgroundColor, height, borderRadius },
-      ]}
-    >
+    <View style={[styles.track, { backgroundColor, height, borderRadius }]}>
       <View
         style={[
           styles.fill,
-          { backgroundColor: color, width: `${clampedValue}%`, borderRadius },
+          { backgroundColor: color, width: `${pct}%`, borderRadius },
         ]}
       />
     </View>
@@ -36,11 +31,6 @@ export const ProgressBar = ({
 };
 
 const styles = StyleSheet.create({
-  track: {
-    width: "100%",
-    overflow: "hidden",
-  },
-  fill: {
-    height: "100%",
-  },
+  track: { width: "100%", overflow: "hidden" },
+  fill: { height: "100%" },
 });

@@ -1,30 +1,18 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
-  ScrollView,
   View,
   Text,
+  ScrollView,
   TouchableOpacity,
-  RefreshControl,
   TextInput,
+  RefreshControl,
   StyleSheet,
   Platform,
-  Image,
   Dimensions,
 } from "react-native";
-import {
-  Play,
-  ArrowRight,
-  BookOpen,
-  Flame,
-  Target,
-  TrendingUp,
-  AlertCircle,
-} from "lucide-react-native";
-import { useFocusEffect } from "expo-router";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Card, CardContent } from "@/components/Card";
-import { ProgressBar } from "@/components/ProgressBar";
+import { Feather } from "@expo/vector-icons";
 import {
   getUser,
   getLearningPaths,
@@ -34,9 +22,13 @@ import {
   type LearningPath,
   type Stats,
 } from "@/utils/storage";
-import Colors from "@/constants/colors";
+import Colors, { shadow, CARD_COLORS } from "@/constants/colors";
+import { ProgressBar } from "@/components/ProgressBar";
 
 const { width } = Dimensions.get("window");
+const CARD_W = width * 0.68;
+
+const CATEGORIES = ["Semua", "Populer", "Terbaru", "Lanjutan"];
 
 export default function Dashboard() {
   const router = useRouter();
@@ -46,206 +38,206 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [wrongCount, setWrongCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("Semua");
 
   const loadData = async () => {
-    const [userData, allPaths, statsData, wrongs] = await Promise.all([
-      getUser(),
-      getLearningPaths(),
-      getStats(),
-      getWrongAnswers(),
+    const [u, p, s, w] = await Promise.all([
+      getUser(), getLearningPaths(), getStats(), getWrongAnswers(),
     ]);
-    if (!userData) {
-      router.replace("/onboarding");
-      return;
-    }
-    setUser(userData);
-    setPaths(allPaths);
-    setStats(statsData);
-    setWrongCount(wrongs.length);
+    if (!u) { router.replace("/onboarding"); return; }
+    setUser(u); setPaths(p); setStats(s); setWrongCount(w.length);
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadData(); }, []));
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+    setRefreshing(true); await loadData(); setRefreshing(false);
   };
 
-  const today = new Date().toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    weekday: "short",
-  });
+  const accuracy = stats && stats.totalAnswers > 0
+    ? Math.round((stats.correctAnswers / stats.totalAnswers) * 100) : 0;
 
-  const accuracy =
-    stats && stats.totalAnswers > 0
-      ? Math.round((stats.correctAnswers / stats.totalAnswers) * 100)
-      : 0;
+  const filtered = paths.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Selamat pagi" : hour < 17 ? "Selamat siang" : "Selamat malam";
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={[
         styles.content,
-        {
-          paddingTop:
-            Platform.OS === "web" ? 80 : insets.top + 16,
-          paddingBottom: Platform.OS === "web" ? 34 : 30,
-        },
+        { paddingTop: Platform.OS === "web" ? 80 : insets.top + 20, paddingBottom: 30 },
       ]}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.dateText}>{today}</Text>
-          <Text style={styles.greeting}>
-            Hi, {user?.name?.split(" ")[0] ?? "Learner"} 👋
+          <Text style={styles.greetingSub}>{greeting} 👋</Text>
+          <Text style={styles.greetingName}>
+            {user?.name?.split(" ")[0] ?? "Learner"}
           </Text>
         </View>
-        <View style={styles.avatar}>
-          <BookOpen size={22} color={Colors.white} />
-        </View>
+        <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.8}>
+          <Text style={styles.avatarEmoji}>🎓</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Hero Banner */}
-      <TouchableOpacity
-        onPress={() => router.push("/(tabs)/learn")}
-        activeOpacity={0.8}
-        style={styles.heroBanner}
-      >
-        <View style={styles.heroTextWrap}>
-          <Text style={styles.heroTitle}>
-            What would you{"\n"}like to learn today?
-          </Text>
-          <View style={styles.heroBtn}>
-            <Play size={14} color={Colors.primary} />
-            <Text style={styles.heroBtnText}>Get started</Text>
+      {/* Search */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchBox}>
+          <Feather name="search" size={18} color={Colors.textMuted} />
+          <TextInput
+            placeholder="Cari kursus..."
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchInput}
+            placeholderTextColor={Colors.textMuted}
+          />
+        </View>
+        <TouchableOpacity style={styles.filterBtn} activeOpacity={0.8}>
+          <Feather name="sliders" size={18} color={Colors.white} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Stats banner */}
+      {(stats?.totalAnswers ?? 0) > 0 && (
+        <View style={styles.statsBanner}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.statsBannerSub}>Progress hari ini</Text>
+            <Text style={styles.statsBannerTitle}>
+              {accuracy}% akurasi · {stats?.streak ?? 0} hari streak 🔥
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push("/(tabs)/progress")}
+              style={styles.statsBannerBtn}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.statsBannerBtnText}>Lihat Detail</Text>
+            </TouchableOpacity>
           </View>
+          <Text style={{ fontSize: 52 }}>📊</Text>
         </View>
-        <View style={styles.heroIcon}>
-          <Text style={{ fontSize: 60 }}>📚</Text>
-        </View>
-      </TouchableOpacity>
+      )}
 
-      {/* Stats Row */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Flame size={20} color="#F59E0B" />
-          <Text style={styles.statValue}>{stats?.streak ?? 0}</Text>
-          <Text style={styles.statLabel}>Streak</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Target size={20} color={Colors.primary} />
-          <Text style={styles.statValue}>{accuracy}%</Text>
-          <Text style={styles.statLabel}>Accuracy</Text>
-        </View>
-        <View style={styles.statCard}>
-          <TrendingUp size={20} color={Colors.success} />
-          <Text style={styles.statValue}>{stats?.totalAnswers ?? 0}</Text>
-          <Text style={styles.statLabel}>Answers</Text>
-        </View>
-      </View>
-
-      {/* Mistakes Alert */}
+      {/* Mistakes alert */}
       {wrongCount > 0 && (
         <TouchableOpacity
           onPress={() => router.push("/mistakes-review")}
-          activeOpacity={0.8}
-          style={styles.mistakeCard}
+          style={styles.mistakeBanner}
+          activeOpacity={0.85}
         >
-          <View style={styles.mistakeLeft}>
-            <View style={styles.mistakeIconWrap}>
-              <AlertCircle size={18} color="#fff" />
-            </View>
-            <View>
-              <Text style={styles.mistakeLabel}>Needs Attention</Text>
-              <Text style={styles.mistakeTitle}>Review Mistakes</Text>
-              <Text style={styles.mistakeSub}>
-                {wrongCount} items to re-learn
-              </Text>
-            </View>
+          <Text style={styles.mistakeEmoji}>⚠️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.mistakeTitle}>Review Kesalahan</Text>
+            <Text style={styles.mistakeSub}>{wrongCount} soal perlu diulangi</Text>
           </View>
-          <ArrowRight size={20} color="#fff" />
+          <Feather name="chevron-right" size={20} color={Colors.white} />
         </TouchableOpacity>
       )}
 
-      {/* Goal */}
-      {user?.goal && (
-        <View style={styles.goalCard}>
-          <Text style={styles.goalLabel}>Your Goal</Text>
-          <Text style={styles.goalText}>{user.goal}</Text>
-          <View style={styles.goalMeta}>
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>{user.level}</Text>
-            </View>
-            <Text style={styles.topicText}>{user.topic}</Text>
-          </View>
-        </View>
-      )}
+      {/* Category pills */}
+      <Text style={styles.sectionTitle}>Kursus</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryRow}
+      >
+        {CATEGORIES.map((cat) => (
+          <TouchableOpacity
+            key={cat}
+            onPress={() => setActiveCategory(cat)}
+            style={[
+              styles.catPill,
+              activeCategory === cat && styles.catPillActive,
+            ]}
+            activeOpacity={0.75}
+          >
+            <Text
+              style={[
+                styles.catPillText,
+                activeCategory === cat && styles.catPillTextActive,
+              ]}
+            >
+              {cat}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
-      {/* Learning Paths */}
-      <Text style={styles.sectionTitle}>Learning Paths</Text>
-      {paths.length === 0 ? (
+      {/* Course cards horizontal */}
+      {filtered.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.courseRow}
+          decelerationRate="fast"
+          snapToInterval={CARD_W + 16}
+        >
+          {filtered.map((path, i) => (
+            <TouchableOpacity
+              key={path.id}
+              style={[
+                styles.courseCard,
+                { backgroundColor: CARD_COLORS[i % CARD_COLORS.length] },
+              ]}
+              onPress={() => router.push("/(tabs)/learn")}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.courseCardEmoji}>
+                {["📘", "🎨", "🌐", "🧠", "⚗️", "📐"][i % 6]}
+              </Text>
+              <Text style={styles.courseCardTitle}>{path.name}</Text>
+              {path.description ? (
+                <Text style={styles.courseCardSub} numberOfLines={2}>
+                  {path.description}
+                </Text>
+              ) : null}
+              <View style={styles.courseCardBottom}>
+                <View style={styles.courseCardTag}>
+                  <Text style={styles.courseCardTagText}>
+                    {user?.topic ?? "Belajar"}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      ) : (
         <TouchableOpacity
           onPress={() => router.push("/(tabs)/learn")}
           style={styles.emptyCard}
           activeOpacity={0.8}
         >
-          <BookOpen size={36} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>No paths yet</Text>
-          <Text style={styles.emptySub}>
-            Create your first learning path to get started
-          </Text>
+          <Text style={{ fontSize: 40 }}>📚</Text>
+          <Text style={styles.emptyTitle}>Belum ada kursus</Text>
+          <Text style={styles.emptySub}>Buat jalur belajar pertamamu sekarang</Text>
           <View style={styles.emptyBtn}>
-            <Text style={styles.emptyBtnText}>Create Path</Text>
+            <Text style={styles.emptyBtnText}>Buat Sekarang</Text>
           </View>
         </TouchableOpacity>
-      ) : (
-        paths.map((path, i) => (
-          <TouchableOpacity
-            key={path.id}
-            style={styles.pathCard}
-            activeOpacity={0.8}
-            onPress={() => router.push("/(tabs)/learn")}
-          >
-            <View style={styles.pathCardLeft}>
-              <View
-                style={[
-                  styles.pathIndex,
-                  { backgroundColor: i === 0 ? Colors.primary : Colors.surface },
-                ]}
-              >
-                <Text
-                  style={{
-                    color: i === 0 ? Colors.white : Colors.textSecondary,
-                    fontWeight: "800",
-                    fontSize: 13,
-                  }}
-                >
-                  {i + 1}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.pathName}>{path.name}</Text>
-                {path.description ? (
-                  <Text style={styles.pathDesc} numberOfLines={1}>
-                    {path.description}
-                  </Text>
-                ) : null}
-              </View>
+      )}
+
+      {/* Recent / Goal */}
+      {user?.goal && (
+        <View style={{ marginTop: 8 }}>
+          <Text style={styles.sectionTitle}>Target Belajarmu</Text>
+          <View style={styles.goalCard}>
+            <View style={styles.goalLeft}>
+              <Text style={styles.goalEmoji}>🎯</Text>
             </View>
-            <ArrowRight size={16} color={Colors.textMuted} />
-          </TouchableOpacity>
-        ))
+            <View style={{ flex: 1 }}>
+              <Text style={styles.goalText}>{user.goal}</Text>
+              <Text style={styles.goalMeta}>{user.topic} · {user.level}</Text>
+            </View>
+          </View>
+        </View>
       )}
     </ScrollView>
   );
@@ -260,209 +252,149 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  dateText: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontWeight: "700",
-    marginBottom: 2,
-  },
-  greeting: { fontSize: 28, fontWeight: "900", color: Colors.black },
-  avatar: {
-    width: 46,
-    height: 46,
+  greetingSub: { fontSize: 13, color: Colors.textMuted, fontWeight: "600", marginBottom: 2 },
+  greetingName: { fontSize: 28, fontWeight: "900", color: Colors.dark },
+  avatarBtn: {
+    width: 48,
+    height: 48,
     borderRadius: 16,
-    backgroundColor: Colors.black,
+    backgroundColor: Colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
   },
-  heroBanner: {
-    backgroundColor: Colors.primaryLight,
+  avatarEmoji: { fontSize: 24 },
+  searchRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
+  searchBox: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: Colors.white,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...shadow,
+    shadowOpacity: 0.04,
+  },
+  searchInput: { flex: 1, fontSize: 14, fontWeight: "600", color: Colors.dark },
+  filterBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 999,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadow,
+  },
+  statsBanner: {
+    backgroundColor: Colors.dark,
     borderRadius: 24,
     padding: 20,
     flexDirection: "row",
-    marginBottom: 16,
-    overflow: "hidden",
-  },
-  heroTextWrap: { flex: 1, justifyContent: "center" },
-  heroTitle: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: Colors.black,
-    lineHeight: 26,
-    marginBottom: 14,
-  },
-  heroBtn: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.white,
+    marginBottom: 16,
+  },
+  statsBannerSub: { fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: "700", marginBottom: 4 },
+  statsBannerTitle: { fontSize: 14, fontWeight: "800", color: Colors.white, lineHeight: 20, marginBottom: 14 },
+  statsBannerBtn: {
     alignSelf: "flex-start",
-    paddingHorizontal: 14,
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 999,
   },
-  heroBtnText: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: Colors.primary,
-  },
-  heroIcon: {
-    width: 80,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingBottom: 4,
-  },
-  statsRow: {
+  statsBannerBtnText: { fontSize: 12, fontWeight: "800", color: Colors.white },
+  mistakeBanner: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 16,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    borderRadius: 18,
-    padding: 14,
     alignItems: "center",
-    gap: 4,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  statValue: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: Colors.black,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: Colors.textMuted,
-    textTransform: "uppercase",
-  },
-  mistakeCard: {
+    gap: 12,
     backgroundColor: Colors.danger,
     borderRadius: 20,
-    padding: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  mistakeLeft: { flexDirection: "row", alignItems: "center", gap: 14, flex: 1 },
-  mistakeIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  mistakeLabel: {
-    fontSize: 10,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  mistakeTitle: {
-    fontSize: 17,
-    fontWeight: "900",
-    color: Colors.white,
-  },
-  mistakeSub: { fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: "500" },
-  goalCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 20,
-    padding: 18,
+    padding: 16,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    ...shadow,
   },
-  goalLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: Colors.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 6,
+  mistakeEmoji: { fontSize: 28 },
+  mistakeTitle: { fontSize: 15, fontWeight: "900", color: Colors.white },
+  mistakeSub: { fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: "500" },
+  sectionTitle: { fontSize: 20, fontWeight: "900", color: Colors.dark, marginBottom: 14 },
+  categoryRow: { gap: 8, paddingBottom: 16, flexDirection: "row" },
+  catPill: {
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: Colors.white,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
   },
-  goalText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: Colors.black,
-    marginBottom: 10,
+  catPillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  catPillText: { fontSize: 13, fontWeight: "700", color: Colors.textSecondary },
+  catPillTextActive: { color: Colors.white },
+  courseRow: { paddingRight: 20, gap: 16 },
+  courseCard: {
+    width: CARD_W,
+    borderRadius: 24,
+    padding: 22,
+    gap: 8,
+    ...shadow,
+    shadowOpacity: 0.18,
   },
-  goalMeta: { flexDirection: "row", alignItems: "center", gap: 10 },
-  levelBadge: {
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+  courseCardEmoji: { fontSize: 36 },
+  courseCardTitle: { fontSize: 18, fontWeight: "900", color: Colors.white, lineHeight: 24 },
+  courseCardSub: { fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: "500", lineHeight: 18 },
+  courseCardBottom: { marginTop: 8 },
+  courseCardTag: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
-  levelText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: Colors.textSecondary,
-    textTransform: "capitalize",
-  },
-  topicText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: Colors.black,
-    marginBottom: 12,
-  },
+  courseCardTagText: { fontSize: 11, fontWeight: "800", color: Colors.white },
   emptyCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
+    backgroundColor: Colors.white,
+    borderRadius: 24,
     padding: 32,
     alignItems: "center",
     gap: 8,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
+    ...shadow,
+    shadowOpacity: 0.04,
   },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: Colors.black,
-    marginTop: 8,
-  },
-  emptySub: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    textAlign: "center",
-    fontWeight: "500",
-  },
+  emptyTitle: { fontSize: 17, fontWeight: "900", color: Colors.dark, marginTop: 8 },
+  emptySub: { fontSize: 13, color: Colors.textMuted, textAlign: "center", fontWeight: "500" },
   emptyBtn: {
     marginTop: 8,
-    backgroundColor: Colors.black,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 999,
   },
   emptyBtnText: { color: Colors.white, fontWeight: "800", fontSize: 13 },
-  pathCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 10,
+  goalCard: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 14,
+    backgroundColor: Colors.white,
+    borderRadius: 20,
+    padding: 18,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
+    ...shadow,
+    shadowOpacity: 0.05,
   },
-  pathCardLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  pathIndex: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+  goalLeft: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: Colors.accentLight,
     alignItems: "center",
     justifyContent: "center",
   },
-  pathName: { fontSize: 15, fontWeight: "800", color: Colors.black },
-  pathDesc: { fontSize: 12, color: Colors.textMuted, fontWeight: "500", marginTop: 2 },
+  goalEmoji: { fontSize: 24 },
+  goalText: { fontSize: 14, fontWeight: "700", color: Colors.dark, marginBottom: 4 },
+  goalMeta: { fontSize: 12, color: Colors.textMuted, fontWeight: "600", textTransform: "capitalize" },
 });

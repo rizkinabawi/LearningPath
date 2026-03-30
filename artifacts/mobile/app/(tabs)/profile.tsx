@@ -11,24 +11,12 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
 import {
-  User,
-  BookOpen,
-  Trash2,
-  ChevronRight,
-  Share2,
-  RefreshCcw,
-  Star,
-} from "lucide-react-native";
-import {
-  getUser,
-  getStats,
-  getLearningPaths,
-  clearAllData,
-  type User as UserType,
-  type Stats,
+  getUser, getStats, getLearningPaths,
+  clearAllData, type User as UserType, type Stats,
 } from "@/utils/storage";
-import Colors from "@/constants/colors";
+import Colors, { shadow } from "@/constants/colors";
 
 export default function ProfileTab() {
   const router = useRouter();
@@ -40,194 +28,130 @@ export default function ProfileTab() {
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [u, s, paths] = await Promise.all([
-          getUser(),
-          getStats(),
-          getLearningPaths(),
-        ]);
-        setUser(u);
-        setStats(s);
-        setPathCount(paths.length);
+        const [u, s, paths] = await Promise.all([getUser(), getStats(), getLearningPaths()]);
+        setUser(u); setStats(s); setPathCount(paths.length);
       })();
     }, [])
   );
 
-  const accuracy =
-    stats && stats.totalAnswers > 0
-      ? Math.round((stats.correctAnswers / stats.totalAnswers) * 100)
-      : 0;
+  const accuracy = stats && stats.totalAnswers > 0
+    ? Math.round((stats.correctAnswers / stats.totalAnswers) * 100) : 0;
 
-  const handleClearData = () => {
-    Alert.alert(
-      "Clear All Data",
-      "This will erase all your learning paths, flashcards, quizzes, and progress. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Clear All",
-          style: "destructive",
-          onPress: async () => {
-            await clearAllData();
-            router.replace("/onboarding");
-          },
-        },
-      ]
-    );
-  };
+  const STAT_ITEMS = [
+    { label: "Jalur", value: pathCount, emoji: "📚" },
+    { label: "Jawaban", value: stats?.totalAnswers ?? 0, emoji: "💬" },
+    { label: "Akurasi", value: `${accuracy}%`, emoji: "🎯" },
+    { label: "Streak", value: stats?.streak ?? 0, emoji: "🔥" },
+  ];
 
-  const handleShare = async () => {
-    await Share.share({
-      message: `I've studied ${stats?.totalAnswers ?? 0} questions with ${accuracy}% accuracy using Mobile Learning! 📚`,
-    });
-  };
-
-  const MenuItem = ({
-    icon,
-    label,
-    onPress,
-    danger = false,
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    onPress: () => void;
-    danger?: boolean;
-  }) => (
-    <TouchableOpacity
-      onPress={onPress}
-      style={styles.menuItem}
-      activeOpacity={0.7}
-    >
-      <View
-        style={[
-          styles.menuIcon,
+  const MENU: { icon: string; label: string; color: string; onPress: () => void }[] = [
+    {
+      icon: "share-2", label: "Bagikan Progress", color: Colors.primary,
+      onPress: async () => {
+        await Share.share({ message: `Saya sudah menjawab ${stats?.totalAnswers ?? 0} soal dengan akurasi ${accuracy}% di Mobile Learning! 📚` });
+      },
+    },
+    {
+      icon: "refresh-cw", label: "Reset Profil", color: Colors.warning,
+      onPress: () =>
+        Alert.alert("Reset Profil", "Profil akan direset, data belajar tetap ada.", [
+          { text: "Batal", style: "cancel" },
           {
-            backgroundColor: danger
-              ? Colors.dangerLight
-              : Colors.surface,
+            text: "Reset",
+            onPress: async () => {
+              const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+              await AsyncStorage.removeItem("user");
+              router.replace("/onboarding");
+            },
           },
-        ]}
-      >
-        {icon}
-      </View>
-      <Text
-        style={[
-          styles.menuLabel,
-          danger && { color: Colors.danger },
-        ]}
-      >
-        {label}
-      </Text>
-      <ChevronRight size={16} color={Colors.textMuted} />
-    </TouchableOpacity>
-  );
+        ]),
+    },
+    {
+      icon: "trash-2", label: "Hapus Semua Data", color: Colors.danger,
+      onPress: () =>
+        Alert.alert(
+          "Hapus Semua Data",
+          "Semua jalur belajar, flashcard, kuis, dan progress akan dihapus. Tidak bisa dibatalkan.",
+          [
+            { text: "Batal", style: "cancel" },
+            { text: "Hapus", style: "destructive", onPress: async () => { await clearAllData(); router.replace("/onboarding"); } },
+          ]
+        ),
+    },
+  ];
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={[
         styles.content,
-        {
-          paddingTop:
-            Platform.OS === "web" ? 80 : insets.top + 16,
-          paddingBottom: Platform.OS === "web" ? 34 : 30,
-        },
+        { paddingTop: Platform.OS === "web" ? 80 : insets.top + 16, paddingBottom: 40 },
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Profile Header */}
-      <View style={styles.profileCard}>
-        <View style={styles.profileAvatar}>
-          <User size={32} color={Colors.white} />
+      {/* Hero profile card */}
+      <View style={styles.heroCard}>
+        <View style={styles.avatarWrap}>
+          <Text style={styles.avatarEmoji}>🎓</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.profileName}>{user?.name ?? "Learner"}</Text>
-          <Text style={styles.profileSub}>{user?.topic ?? "—"}</Text>
-          <View style={styles.levelBadge}>
-            <Text style={styles.levelText}>{user?.level ?? "beginner"}</Text>
-          </View>
+        <Text style={styles.profileName}>{user?.name ?? "Learner"}</Text>
+        <Text style={styles.profileSub}>{user?.topic ?? "—"}</Text>
+        <View style={styles.levelBadge}>
+          <Text style={styles.levelText}>{user?.level ?? "beginner"}</Text>
         </View>
       </View>
 
-      {/* Goal */}
+      {/* Stats row */}
+      <View style={styles.statsCard}>
+        {STAT_ITEMS.map((s, i) => (
+          <React.Fragment key={s.label}>
+            <View style={styles.statItem}>
+              <Text style={styles.statEmoji}>{s.emoji}</Text>
+              <Text style={styles.statValue}>{s.value}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
+            </View>
+            {i < STAT_ITEMS.length - 1 && <View style={styles.statDivider} />}
+          </React.Fragment>
+        ))}
+      </View>
+
+      {/* Goal card */}
       {user?.goal && (
         <View style={styles.goalCard}>
-          <Text style={styles.sectionLabel}>Learning Goal</Text>
-          <Text style={styles.goalText}>{user.goal}</Text>
+          <View style={styles.goalIcon}>
+            <Text style={{ fontSize: 24 }}>🎯</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.goalLabel}>Target Belajar</Text>
+            <Text style={styles.goalText}>{user.goal}</Text>
+          </View>
         </View>
       )}
 
-      {/* Stats Summary */}
-      <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{pathCount}</Text>
-          <Text style={styles.statLabel}>Paths</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{stats?.totalAnswers ?? 0}</Text>
-          <Text style={styles.statLabel}>Answers</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{accuracy}%</Text>
-          <Text style={styles.statLabel}>Accuracy</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{stats?.streak ?? 0}</Text>
-          <Text style={styles.statLabel}>Streak</Text>
-        </View>
-      </View>
-
       {/* Menu */}
-      <Text style={styles.sectionTitle}>Options</Text>
+      <Text style={styles.sectionTitle}>Pengaturan</Text>
       <View style={styles.menuCard}>
-        <MenuItem
-          icon={<Star size={18} color={Colors.warning} />}
-          label="Rate the App"
-          onPress={() => {}}
-        />
-        <View style={styles.menuDivider} />
-        <MenuItem
-          icon={<Share2 size={18} color={Colors.primary} />}
-          label="Share My Progress"
-          onPress={handleShare}
-        />
-        <View style={styles.menuDivider} />
-        <MenuItem
-          icon={<RefreshCcw size={18} color={Colors.textSecondary} />}
-          label="Reset Onboarding"
-          onPress={() => {
-            Alert.alert(
-              "Reset Profile",
-              "This will reset your profile info but keep your learning data.",
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Reset",
-                  onPress: async () => {
-                    const AsyncStorage = (
-                      await import("@react-native-async-storage/async-storage")
-                    ).default;
-                    await AsyncStorage.removeItem("user");
-                    router.replace("/onboarding");
-                  },
-                },
-              ]
-            );
-          }}
-        />
-        <View style={styles.menuDivider} />
-        <MenuItem
-          icon={<Trash2 size={18} color={Colors.danger} />}
-          label="Clear All Data"
-          onPress={handleClearData}
-          danger
-        />
+        {MENU.map((item, i) => (
+          <React.Fragment key={item.label}>
+            <TouchableOpacity
+              onPress={item.onPress}
+              style={styles.menuItem}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: item.color + "15" }]}>
+                <Feather name={item.icon as any} size={18} color={item.color} />
+              </View>
+              <Text style={[styles.menuLabel, item.color === Colors.danger && { color: Colors.danger }]}>
+                {item.label}
+              </Text>
+              <Feather name="chevron-right" size={16} color={Colors.textMuted} />
+            </TouchableOpacity>
+            {i < MENU.length - 1 && <View style={styles.menuDivider} />}
+          </React.Fragment>
+        ))}
       </View>
 
-      {/* Footer */}
-      <Text style={styles.footer}>Mobile Learning · v1.0</Text>
+      <Text style={styles.footer}>Mobile Learning · v1.0 · Made with ❤️</Text>
     </ScrollView>
   );
 }
@@ -235,113 +159,90 @@ export default function ProfileTab() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { paddingHorizontal: 20 },
-  profileCard: {
-    flexDirection: "row",
+  heroCard: {
+    backgroundColor: Colors.dark,
+    borderRadius: 28,
+    padding: 28,
     alignItems: "center",
-    gap: 16,
-    backgroundColor: Colors.white,
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    marginBottom: 16,
+    ...shadow,
+    shadowColor: Colors.dark,
+    shadowOpacity: 0.3,
   },
-  profileAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 22,
-    backgroundColor: Colors.black,
+  avatarWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 14,
   },
-  profileName: { fontSize: 20, fontWeight: "900", color: Colors.black, marginBottom: 2 },
-  profileSub: { fontSize: 13, color: Colors.textMuted, fontWeight: "500", marginBottom: 6 },
+  avatarEmoji: { fontSize: 40 },
+  profileName: { fontSize: 24, fontWeight: "900", color: Colors.white, marginBottom: 4 },
+  profileSub: { fontSize: 14, color: "rgba(255,255,255,0.65)", fontWeight: "500", marginBottom: 12 },
   levelBadge: {
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    alignSelf: "flex-start",
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
-  levelText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: Colors.textSecondary,
-    textTransform: "capitalize",
+  levelText: { fontSize: 12, fontWeight: "800", color: Colors.white, textTransform: "capitalize" },
+  statsCard: {
+    flexDirection: "row",
+    backgroundColor: Colors.white,
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 14,
+    ...shadow,
+    shadowOpacity: 0.06,
   },
+  statItem: { flex: 1, alignItems: "center", gap: 4 },
+  statEmoji: { fontSize: 20 },
+  statValue: { fontSize: 20, fontWeight: "900", color: Colors.dark },
+  statLabel: { fontSize: 11, fontWeight: "700", color: Colors.textMuted, textTransform: "uppercase" },
+  statDivider: { width: 1, backgroundColor: Colors.border },
   goalCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
     backgroundColor: Colors.white,
     borderRadius: 20,
     padding: 18,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    gap: 6,
-  },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: Colors.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  goalText: { fontSize: 15, fontWeight: "600", color: Colors.black },
-  statsRow: {
-    flexDirection: "row",
-    backgroundColor: Colors.white,
-    borderRadius: 20,
-    padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
+    ...shadow,
+    shadowOpacity: 0.04,
   },
-  statBox: { flex: 1, alignItems: "center" },
-  statValue: { fontSize: 22, fontWeight: "900", color: Colors.black },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: Colors.textMuted,
-    textTransform: "uppercase",
+  goalIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: Colors.accentLight,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  statDivider: { width: 1, backgroundColor: Colors.borderLight, height: "100%" },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: Colors.black,
-    marginBottom: 10,
-  },
+  goalLabel: { fontSize: 11, fontWeight: "800", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 },
+  goalText: { fontSize: 14, fontWeight: "700", color: Colors.dark },
+  sectionTitle: { fontSize: 18, fontWeight: "900", color: Colors.dark, marginBottom: 10 },
   menuCard: {
     backgroundColor: Colors.white,
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
     marginBottom: 24,
+    ...shadow,
+    shadowOpacity: 0.06,
   },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    gap: 14,
-  },
+  menuItem: { flexDirection: "row", alignItems: "center", padding: 18, gap: 14 },
   menuIcon: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  menuLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: Colors.black },
-  menuDivider: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
-    marginHorizontal: 16,
-  },
-  footer: {
-    textAlign: "center",
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontWeight: "500",
-    marginBottom: 20,
-  },
+  menuLabel: { flex: 1, fontSize: 15, fontWeight: "700", color: Colors.dark },
+  menuDivider: { height: 1, backgroundColor: Colors.border, marginHorizontal: 18 },
+  footer: { textAlign: "center", fontSize: 12, color: Colors.textMuted, fontWeight: "500" },
 });
