@@ -61,7 +61,7 @@
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "expo-clipboard": "^8.0.8",
-    "expo-document-picker": "~13.0.3",
+    "expo-document-picker": "~14.0.8",
     "expo-file-system": "^19.0.21",
     "expo-print": "^15.0.8",
     "expo-sharing": "^14.0.8",
