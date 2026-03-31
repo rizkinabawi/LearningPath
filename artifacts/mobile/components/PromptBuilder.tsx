@@ -146,8 +146,8 @@ export const PromptBuilder = () => {
             topic: topic.trim(),
             difficulty,
             items: [
-              { front: `Contoh pertanyaan tentang ${topic}`, back: "Contoh jawaban lengkap", image: undefined },
-              { front: `Konsep utama ${topic}`, back: "Penjelasan singkat dan padat", image: undefined },
+              { question: `Contoh pertanyaan tentang ${topic}?`, answer: "Jawaban lengkap dan informatif di sini.", tag: "contoh-tag" } as any,
+              { question: `Konsep utama ${topic}`, answer: "Penjelasan singkat dan padat tentang konsep ini.", tag: "konsep-inti" } as any,
             ],
           }
         : {
@@ -157,9 +157,8 @@ export const PromptBuilder = () => {
             items: [
               {
                 question: `Soal contoh tentang ${topic}?`,
-                options: ["Opsi A", "Opsi B", "Opsi C", "Opsi D"],
-                answer: "Opsi A",
-                explanation: "Karena opsi A adalah yang paling tepat",
+                options: ["Jawaban yang benar", "Pilihan salah B", "Pilihan salah C", "Pilihan salah D"],
+                answer: "Jawaban yang benar",
               },
             ],
           };
@@ -218,12 +217,62 @@ export const PromptBuilder = () => {
       return;
     }
     try {
-      const parsed = JSON.parse(jsonInput.trim()) as LearningJsonOutput;
-      if (!parsed.type || !parsed.items) throw new Error("Format tidak valid");
-      setImportedJson(parsed);
-      toast.success(`Berhasil: ${parsed.items.length} item di-import`);
-    } catch {
-      toast.error("JSON tidak valid atau format salah");
+      const raw = JSON.parse(jsonInput.trim());
+
+      // Normalisasi ke format LearningJsonOutput
+      let result: LearningJsonOutput;
+
+      if (Array.isArray(raw)) {
+        // Flat array format — deteksi tipe dari field yang ada
+        const first = raw[0] ?? {};
+        const isQuiz = "options" in first;
+        result = {
+          type: isQuiz ? "quiz" : "flashcard",
+          topic: "Import",
+          difficulty: "intermediate",
+          items: raw.map((item: any) => {
+            if (isQuiz) {
+              return {
+                question: item.question ?? "",
+                options: item.options ?? [],
+                answer: item.answer ?? "",
+              };
+            } else {
+              return {
+                front: item.question ?? item.front ?? "",
+                back: item.answer ?? item.back ?? "",
+                tag: item.tag,
+              };
+            }
+          }),
+        };
+      } else if (raw && Array.isArray(raw.items)) {
+        // Wrapped format — sudah benar, tapi normalkan field flashcard
+        result = {
+          ...raw,
+          items: raw.items.map((item: any) => {
+            if (raw.type === "flashcard") {
+              return {
+                front: item.question ?? item.front ?? "",
+                back: item.answer ?? item.back ?? "",
+                tag: item.tag,
+              };
+            }
+            return item;
+          }),
+        } as LearningJsonOutput;
+      } else {
+        throw new Error("Format tidak dikenali");
+      }
+
+      if (!result.items || result.items.length === 0) {
+        throw new Error("Tidak ada item ditemukan");
+      }
+
+      setImportedJson(result);
+      toast.success(`Berhasil: ${result.items.length} item di-import`);
+    } catch (e: any) {
+      toast.error(e.message === "Format tidak dikenali" ? "Format JSON tidak dikenali" : "JSON tidak valid");
     }
   };
 
@@ -518,10 +567,16 @@ export const PromptBuilder = () => {
           {/* Expected Format Docs */}
           <View style={[styles.docsCard, shadowSm]}>
             <Text style={styles.docsTitle}>Format JSON yang Didukung</Text>
+            <Text style={styles.docsHint}>Sistem menerima flat array (disarankan) atau wrapped object</Text>
             <View style={styles.docsSep} />
-            <Text style={styles.docsCode}>{`// Quiz\n{\n  "type": "quiz",\n  "topic": "...",\n  "difficulty": "...",\n  "items": [\n    {\n      "question": "...",\n      "options": ["..."],\n      "answer": "...",\n      "explanation": "..."\n    }\n  ]\n}`}</Text>
+            <Text style={styles.docsSubtitle}>✅ Flashcard (flat array)</Text>
+            <Text style={styles.docsCode}>{`[\n  {\n    "question": "Apa itu ...",\n    "answer": "Jawaban lengkap",\n    "tag": "kata-kunci"\n  }\n]`}</Text>
             <View style={styles.docsSep} />
-            <Text style={styles.docsCode}>{`// Flashcard\n{\n  "type": "flashcard",\n  "topic": "...",\n  "difficulty": "...",\n  "items": [\n    {\n      "front": "...",\n      "back": "..."\n    }\n  ]\n}`}</Text>
+            <Text style={styles.docsSubtitle}>✅ Quiz (flat array)</Text>
+            <Text style={styles.docsCode}>{`[\n  {\n    "question": "Pertanyaan?",\n    "options": [\n      "Jawaban benar",\n      "Pilihan salah B",\n      "Pilihan salah C",\n      "Pilihan salah D"\n    ],\n    "answer": "Jawaban benar"\n  }\n]`}</Text>
+            <View style={styles.docsSep} />
+            <Text style={styles.docsSubtitle}>⚠️ Penting untuk Quiz</Text>
+            <Text style={styles.docsHint}>Nilai "answer" harus identik (sama persis) dengan salah satu teks di "options". Jangan tulis "A", "B", "C", "D".</Text>
           </View>
         </>
       )}
@@ -754,7 +809,9 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  docsTitle: { fontSize: 12, fontWeight: "900", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1 },
+  docsTitle: { fontSize: 13, fontWeight: "900", color: "#fff", marginBottom: 2 },
+  docsSubtitle: { fontSize: 11, fontWeight: "800", color: "#A5B4FC", marginBottom: 4 },
+  docsHint: { fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: "500", lineHeight: 16 },
   docsSep: { height: 1, backgroundColor: "rgba(255,255,255,0.08)" },
   docsCode: { fontSize: 11, color: "#A5B4FC", lineHeight: 19, fontFamily: "monospace" },
 });

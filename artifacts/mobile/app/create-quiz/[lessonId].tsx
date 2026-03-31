@@ -198,31 +198,69 @@ export default function CreateQuizScreen() {
   const handleImportJson = async () => {
     try {
       const parsed = JSON.parse(importJson);
-      const items = Array.isArray(parsed) ? parsed : [parsed];
-      let count = 0;
-      for (const item of items) {
-        if (item.question && item.options && item.answer) {
-          const quiz: Quiz = {
-            id: generateId(),
-            lessonId: lessonId ?? "",
-            question: String(item.question),
-            options: item.options.map(String),
-            answer: String(item.answer),
-            type: "multiple-choice",
-            createdAt: new Date().toISOString(),
-          };
-          await saveQuiz(quiz);
-          setExisting((prev) => [...prev, quiz]);
-          count++;
-        }
+
+      // Normalisasi: terima flat array ATAU wrapped {type, items}
+      let rawItems: any[] = [];
+      if (Array.isArray(parsed)) {
+        rawItems = parsed;
+      } else if (parsed && Array.isArray(parsed.items)) {
+        rawItems = parsed.items;
+      } else {
+        rawItems = [parsed];
       }
+
+      let count = 0;
+      for (const item of rawItems) {
+        if (!item.question || !Array.isArray(item.options) || !item.answer) continue;
+
+        const options: string[] = item.options.map(String);
+        const answerRaw = String(item.answer).trim();
+
+        // Coba cocokkan jawaban: cari opsi yang mengandung jawaban atau sebaliknya
+        let answer = answerRaw;
+        const exactMatch = options.find((o) => o === answerRaw);
+        if (!exactMatch) {
+          // Fallback: cari opsi yang dimulai dengan huruf jawaban (misal: "A" → opsi pertama)
+          const letterMatch = answerRaw.match(/^([A-Da-d])[\.\):\s]/);
+          if (letterMatch) {
+            const idx = "abcd".indexOf(letterMatch[1].toLowerCase());
+            if (idx >= 0 && options[idx]) answer = options[idx];
+          } else {
+            // Partial match: cari opsi yang mengandung teks jawaban
+            const partial = options.find((o) =>
+              o.toLowerCase().includes(answerRaw.toLowerCase()) ||
+              answerRaw.toLowerCase().includes(o.toLowerCase())
+            );
+            if (partial) answer = partial;
+          }
+        }
+
+        const quiz: Quiz = {
+          id: generateId(),
+          lessonId: lessonId ?? "",
+          question: String(item.question),
+          options,
+          answer,
+          type: "multiple-choice",
+          createdAt: new Date().toISOString(),
+        };
+        await saveQuiz(quiz);
+        setExisting((prev) => [...prev, quiz]);
+        count++;
+      }
+
+      if (count === 0) {
+        Alert.alert("Tidak Ada Data", "Tidak ada soal valid. Pastikan setiap item punya field question, options (array), dan answer.");
+        return;
+      }
+
       setImportJson("");
       setShowImport(false);
       toast.success(`${count} soal berhasil diimport!`);
     } catch {
       Alert.alert(
         "JSON Tidak Valid",
-        'Pastikan format sesuai:\n[{"question":"...","options":["A","B","C","D"],"answer":"A"}]'
+        'Format yang didukung:\n\n1. Flat array (disarankan):\n[{"question":"...","options":["A","B","C","D"],"answer":"teks lengkap A"}]\n\n2. Wrapped format:\n{"items":[{"question":"...","options":[...],"answer":"..."}]}'
       );
     }
   };

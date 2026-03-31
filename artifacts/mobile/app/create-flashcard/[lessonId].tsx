@@ -172,16 +172,32 @@ export default function CreateFlashcardScreen() {
   const handleImportJson = async () => {
     try {
       const parsed = JSON.parse(importJson);
-      const cards = Array.isArray(parsed) ? parsed : [parsed];
+
+      // Normalisasi: terima flat array ATAU wrapped {type, items}
+      let rawItems: any[] = [];
+      if (Array.isArray(parsed)) {
+        rawItems = parsed;
+      } else if (parsed && Array.isArray(parsed.items)) {
+        rawItems = parsed.items;
+      } else {
+        rawItems = [parsed];
+      }
+
       let count = 0;
-      for (const item of cards) {
-        if (item.question && item.answer) {
+      for (const item of rawItems) {
+        // Dukung field: question/answer/tag (format baru)
+        //           ATAU front/back (format lama PromptBuilder)
+        const question = item.question ?? item.front ?? "";
+        const answer = item.answer ?? item.back ?? "";
+        const tag = item.tag ?? "";
+
+        if (question && answer) {
           const card: Flashcard = {
             id: generateId(),
             lessonId: lessonId ?? "",
-            question: String(item.question),
-            answer: String(item.answer),
-            tag: String(item.tag ?? ""),
+            question: String(question),
+            answer: String(answer),
+            tag: String(tag),
             createdAt: new Date().toISOString(),
           };
           await saveFlashcard(card);
@@ -189,13 +205,19 @@ export default function CreateFlashcardScreen() {
           count++;
         }
       }
+
+      if (count === 0) {
+        Alert.alert("Tidak Ada Data", "Tidak ada item yang valid ditemukan. Pastikan setiap item memiliki field question/answer.");
+        return;
+      }
+
       setImportJson("");
       setShowImport(false);
       toast.success(`${count} flashcard berhasil diimport!`);
     } catch {
       Alert.alert(
         "JSON Tidak Valid",
-        'Pastikan format sesuai:\n[{"question":"...","answer":"...","tag":"..."}]'
+        'Format yang didukung:\n\n1. Flat array (disarankan):\n[{"question":"...","answer":"...","tag":"..."}]\n\n2. Wrapped format:\n{"items":[{"question":"...","answer":"..."}]}'
       );
     }
   };
