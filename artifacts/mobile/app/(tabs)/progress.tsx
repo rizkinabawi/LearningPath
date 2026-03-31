@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PromptBuilder } from "@/components/PromptBuilder";
 import { getStats, getProgress, type Stats, type Progress } from "@/utils/storage";
@@ -33,12 +33,21 @@ const DIFF_CONFIG = {
 
 export default function ProgressTab() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ tab?: string }>();
   const [stats, setStats] = useState<Stats | null>(null);
   const [progress, setProgress] = useState<Progress[]>([]);
   const [difficulty, setDifficulty] = useState<DifficultyStats | null>(null);
   const [tab, setTab] = useState<Tab>("stats");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [activeDiff, setActiveDiff] = useState<"mudah" | "sedang" | "susah">("susah");
+
+  // Switch tab when navigated with ?tab= param
+  useEffect(() => {
+    const t = params.tab;
+    if (t === "stats" || t === "classify" || t === "prompts") {
+      setTab(t);
+    }
+  }, [params.tab]);
 
   useFocusEffect(useCallback(() => {
     (async () => {
@@ -416,7 +425,7 @@ const styles = StyleSheet.create({
   hDot1: { position: "absolute", width: 180, height: 180, borderRadius: 90, backgroundColor: "rgba(74,158,255,0.1)", top: -50, right: -50 },
   hDot2: { position: "absolute", width: 110, height: 110, borderRadius: 55, backgroundColor: "rgba(10,211,193,0.07)", bottom: -20, left: 20 },
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
-  headerSub: { fontSize: 10, color: "rgba(255,255,255,0.45)", fontWeight: "700", textTransform: "uppercase", letterSpacing: 1.5 },
+  headerSub: { fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
   headerTitle: { fontSize: 24, fontWeight: "900", color: "#fff", letterSpacing: -0.5 },
   pdfBtn: { borderRadius: 12, overflow: "hidden" },
   pdfBtnGrad: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 9 },
@@ -438,8 +447,8 @@ const styles = StyleSheet.create({
   tabItemActive: { borderBottomWidth: 2.5, borderBottomColor: Colors.primary },
   tabItemText: { fontSize: 12, fontWeight: "700", color: "rgba(255,255,255,0.4)" },
   tabItemTextActive: { color: "#fff" },
-  scrollContent: { padding: 14, paddingBottom: 40, gap: 12 },
-  card: { backgroundColor: "#fff", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 12 },
+  scrollContent: { padding: 20, paddingBottom: 40, gap: 12 },
+  card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: Colors.border, gap: 12 },
   cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   cardHeadLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHeadIcon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
