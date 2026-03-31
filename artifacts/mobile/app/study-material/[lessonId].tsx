@@ -10,6 +10,7 @@ import {
   Modal,
   ScrollView,
   Linking,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -109,17 +110,19 @@ export default function StudyMaterialScreen() {
   } | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const safeLesson = Array.isArray(lessonId) ? lessonId[0] : (lessonId ?? "");
+
   useEffect(() => {
     loadData();
-  }, [lessonId]);
+  }, [safeLesson]);
 
   const loadData = async () => {
-    const data = await getStudyMaterials(lessonId);
+    const data = await getStudyMaterials(safeLesson);
     setMaterials(
       data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     );
     const lessons = await getLessons();
-    const lesson = lessons.find((l) => l.id === lessonId);
+    const lesson = lessons.find((l) => l.id === safeLesson);
     if (lesson) setLessonName(lesson.name);
   };
 
@@ -165,6 +168,8 @@ export default function StudyMaterialScreen() {
       return;
     }
 
+    const safeId = Array.isArray(lessonId) ? lessonId[0] : (lessonId ?? "");
+
     setSaving(true);
     try {
       let filePath: string | undefined;
@@ -173,24 +178,30 @@ export default function StudyMaterialScreen() {
       let fileMime: string | undefined;
 
       if (activeTab === "file" && pickedFile) {
-        await ensureDir();
-        const ext = pickedFile.name.split(".").pop() ?? "bin";
-        const destName = `${generateId()}.${ext}`;
-        const dest = MATERIAL_DIR + destName;
-        if (Platform.OS !== "web") {
-          await FileSystem.copyAsync({ from: pickedFile.uri, to: dest });
-          filePath = dest;
-        } else {
-          filePath = pickedFile.uri;
-        }
         fileName = pickedFile.name;
         fileSize = pickedFile.size;
         fileMime = pickedFile.mimeType;
+
+        if (Platform.OS !== "web") {
+          try {
+            await ensureDir();
+            const ext = pickedFile.name.split(".").pop() ?? "bin";
+            const destName = `${generateId()}.${ext}`;
+            const dest = MATERIAL_DIR + destName;
+            await FileSystem.copyAsync({ from: pickedFile.uri, to: dest });
+            filePath = dest;
+          } catch {
+            // Fall back to original picker URI (still accessible from cache)
+            filePath = pickedFile.uri;
+          }
+        } else {
+          filePath = pickedFile.uri;
+        }
       }
 
       const mat: StudyMaterial = {
         id: editMat?.id ?? generateId(),
-        lessonId: lessonId ?? "",
+        lessonId: safeId,
         title: matTitle.trim(),
         type: activeTab,
         content: activeTab === "file" ? "" : matContent.trim(),
@@ -204,8 +215,8 @@ export default function StudyMaterialScreen() {
       setShowModal(false);
       toast.success("Materi berhasil disimpan!");
       loadData();
-    } catch (e) {
-      toast.error("Gagal menyimpan materi");
+    } catch (e: any) {
+      toast.error(`Gagal menyimpan: ${e?.message ?? "Error tidak diketahui"}`);
     } finally {
       setSaving(false);
     }
@@ -431,6 +442,10 @@ export default function StudyMaterialScreen() {
 
       {/* Add Modal */}
       <Modal visible={showModal} transparent animationType="slide">
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <View style={styles.modalOverlay}>
           <View
             style={[
@@ -441,115 +456,122 @@ export default function StudyMaterialScreen() {
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Tambah Materi</Text>
 
-            {/* Type Tabs */}
-            <View style={styles.tabRow}>
-              {TABS.map((t) => (
-                <TouchableOpacity
-                  key={t.key}
-                  style={[
-                    styles.tabBtn,
-                    activeTab === t.key && styles.tabBtnActive,
-                  ]}
-                  onPress={() => {
-                    setActiveTab(t.key);
-                    setMatContent("");
-                    setPickedFile(null);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.tabBtnText,
-                      activeTab === t.key && styles.tabBtnTextActive,
-                    ]}
-                  >
-                    {t.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.fieldLabel}>Judul Materi</Text>
-            <TextInput
-              value={matTitle}
-              onChangeText={setMatTitle}
-              placeholder="Judul materi..."
-              style={styles.input}
-              placeholderTextColor={Colors.textMuted}
-              autoFocus
-            />
-
-            {activeTab === "text" && (
-              <>
-                <Text style={[styles.fieldLabel, { marginTop: 10 }]}>
-                  Isi Materi (Teks)
-                </Text>
-                <TextInput
-                  value={matContent}
-                  onChangeText={setMatContent}
-                  placeholder="Tulis materi pelajaran di sini..."
-                  style={[styles.input, styles.textArea]}
-                  placeholderTextColor={Colors.textMuted}
-                  multiline
-                  textAlignVertical="top"
-                />
-              </>
-            )}
-
-            {activeTab === "html" && (
-              <>
-                <Text style={[styles.fieldLabel, { marginTop: 10 }]}>
-                  Kode HTML
-                </Text>
-                <Text style={styles.fieldHint}>
-                  Salin HTML dari mana saja (presentasi, artikel, dokumen)
-                </Text>
-                <TextInput
-                  value={matContent}
-                  onChangeText={setMatContent}
-                  placeholder={"<h1>Judul</h1>\n<p>Isi materi...</p>"}
-                  style={[styles.input, styles.textArea, styles.codeInput]}
-                  placeholderTextColor={Colors.textMuted}
-                  multiline
-                  textAlignVertical="top"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </>
-            )}
-
-            {activeTab === "file" && (
-              <>
-                <Text style={[styles.fieldLabel, { marginTop: 10 }]}>
-                  Upload File (PPT, PDF, DOC, dll)
-                </Text>
-                {pickedFile ? (
-                  <View style={styles.pickedFile}>
-                    <Paperclip size={16} color={Colors.amber} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.pickedFileName}>{pickedFile.name}</Text>
-                      {pickedFile.size && (
-                        <Text style={styles.pickedFileSize}>
-                          {formatBytes(pickedFile.size)}
-                        </Text>
-                      )}
-                    </View>
-                    <TouchableOpacity onPress={() => setPickedFile(null)}>
-                      <X size={16} color={Colors.danger} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: 440 }}
+              contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
+            >
+              {/* Type Tabs */}
+              <View style={styles.tabRow}>
+                {TABS.map((t) => (
                   <TouchableOpacity
-                    style={styles.uploadBtn}
-                    onPress={pickFile}
-                    activeOpacity={0.8}
+                    key={t.key}
+                    style={[
+                      styles.tabBtn,
+                      activeTab === t.key && styles.tabBtnActive,
+                    ]}
+                    onPress={() => {
+                      setActiveTab(t.key);
+                      setMatContent("");
+                      setPickedFile(null);
+                    }}
                   >
-                    <Paperclip size={20} color={Colors.amber} />
-                    <Text style={styles.uploadBtnText}>Pilih File</Text>
-                    <Text style={styles.uploadBtnHint}>PPT, PDF, DOC, DOCX, dll</Text>
+                    <Text
+                      style={[
+                        styles.tabBtnText,
+                        activeTab === t.key && styles.tabBtnTextActive,
+                      ]}
+                    >
+                      {t.label}
+                    </Text>
                   </TouchableOpacity>
-                )}
-              </>
-            )}
+                ))}
+              </View>
+
+              <Text style={styles.fieldLabel}>Judul Materi</Text>
+              <TextInput
+                value={matTitle}
+                onChangeText={setMatTitle}
+                placeholder="Judul materi..."
+                style={styles.input}
+                placeholderTextColor={Colors.textMuted}
+                autoFocus
+              />
+
+              {activeTab === "text" && (
+                <>
+                  <Text style={[styles.fieldLabel, { marginTop: 6 }]}>
+                    Isi Materi (Teks)
+                  </Text>
+                  <TextInput
+                    value={matContent}
+                    onChangeText={setMatContent}
+                    placeholder="Tulis materi pelajaran di sini..."
+                    style={[styles.input, styles.textArea]}
+                    placeholderTextColor={Colors.textMuted}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                </>
+              )}
+
+              {activeTab === "html" && (
+                <>
+                  <Text style={[styles.fieldLabel, { marginTop: 6 }]}>
+                    Kode HTML
+                  </Text>
+                  <Text style={styles.fieldHint}>
+                    Salin HTML dari mana saja (presentasi, artikel, dokumen)
+                  </Text>
+                  <TextInput
+                    value={matContent}
+                    onChangeText={setMatContent}
+                    placeholder={"<h1>Judul</h1>\n<p>Isi materi...</p>"}
+                    style={[styles.input, styles.textArea, styles.codeInput]}
+                    placeholderTextColor={Colors.textMuted}
+                    multiline
+                    textAlignVertical="top"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </>
+              )}
+
+              {activeTab === "file" && (
+                <>
+                  <Text style={[styles.fieldLabel, { marginTop: 6 }]}>
+                    Upload File (PPT, PDF, DOC, dll)
+                  </Text>
+                  {pickedFile ? (
+                    <View style={styles.pickedFile}>
+                      <Paperclip size={16} color={Colors.amber} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.pickedFileName}>{pickedFile.name}</Text>
+                        {pickedFile.size && (
+                          <Text style={styles.pickedFileSize}>
+                            {formatBytes(pickedFile.size)}
+                          </Text>
+                        )}
+                      </View>
+                      <TouchableOpacity onPress={() => setPickedFile(null)}>
+                        <X size={16} color={Colors.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={pickFile}
+                      activeOpacity={0.8}
+                    >
+                      <Paperclip size={20} color={Colors.amber} />
+                      <Text style={styles.uploadBtnText}>Pilih File</Text>
+                      <Text style={styles.uploadBtnHint}>PPT, PDF, DOC, DOCX, dll</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </ScrollView>
 
             <View style={styles.modalBtns}>
               <TouchableOpacity
@@ -570,6 +592,7 @@ export default function StudyMaterialScreen() {
             </View>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

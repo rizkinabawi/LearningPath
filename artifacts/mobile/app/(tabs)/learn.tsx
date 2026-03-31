@@ -9,6 +9,7 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
@@ -334,22 +335,27 @@ export default function LearnPage() {
         },
       ].map((m) => (
         <Modal key={m.title} visible={m.vis} transparent animationType="slide">
-          <View style={styles.mOverlay}>
-            <View style={styles.mBox}>
-              <Text style={styles.mTitle}>{m.title}</Text>
-              {m.body}
-              <View style={styles.mBtns}>
-                <TouchableOpacity onPress={m.close} style={styles.mBtnCancel}>
-                  <Text style={styles.mBtnCancelText}>Batal</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={m.save} style={styles.mBtnOk}>
-                  <LinearGradient colors={["#4A9EFF", "#6C63FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mBtnOkGrad}>
-                    <Text style={styles.mBtnOkText}>Simpan</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
+            <View style={styles.mOverlay}>
+              <View style={styles.mBox}>
+                <Text style={styles.mTitle}>{m.title}</Text>
+                {m.body}
+                <View style={styles.mBtns}>
+                  <TouchableOpacity onPress={m.close} style={styles.mBtnCancel}>
+                    <Text style={styles.mBtnCancelText}>Batal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={m.save} style={styles.mBtnOk}>
+                    <LinearGradient colors={["#4A9EFF", "#6C63FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mBtnOkGrad}>
+                      <Text style={styles.mBtnOkText}>Simpan</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       ))}
     </View>
