@@ -20,6 +20,7 @@ import { classifyAllItems, type DifficultyStats } from "@/utils/difficulty-class
 import { generateReportHTML } from "@/utils/report-generator";
 import { ProgressBar } from "@/components/ProgressBar";
 import Colors from "@/constants/colors";
+import { toast } from "@/components/Toast";
 
 const { width } = Dimensions.get("window");
 type Tab = "stats" | "classify" | "prompts";
@@ -52,7 +53,7 @@ export default function ProgressTab() {
 
   const handleExportPDF = async () => {
     if (Platform.OS === "web") {
-      Alert.alert("PDF Export", "Fitur PDF hanya tersedia di perangkat iOS/Android. Scan QR untuk buka di HP.");
+      toast.info("PDF hanya tersedia di iOS/Android");
       return;
     }
     setPdfLoading(true);
@@ -64,11 +65,12 @@ export default function ProgressTab() {
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Laporan Belajar" });
+        toast.success("PDF berhasil dibuat!");
       } else {
-        Alert.alert("Tersimpan", `PDF disimpan di: ${uri}`);
+        toast.info("PDF tersimpan di perangkat");
       }
-    } catch (e) {
-      Alert.alert("Error", "Gagal membuat PDF. Coba lagi.");
+    } catch {
+      toast.error("Gagal membuat PDF");
     } finally {
       setPdfLoading(false);
     }

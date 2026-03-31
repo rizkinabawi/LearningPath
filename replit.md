@@ -91,6 +91,27 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
 
+### `artifacts/mobile` (`@workspace/mobile`)
+
+Expo React Native mobile learning app. Features learning paths → modules → lessons → flashcards/quizzes, progress tracking, difficulty classification, PDF reports, and AI prompt generator.
+
+- **UI**: 5-tab navigation (Home, Kursus, Latihan, Progress, Profil), all screens use `StyleSheet` + `LinearGradient`
+- **Colors**: `primary=#4C6FFF`, gradient `[#4C6FFF, #7C47FF]`, defined in `constants/colors.ts`
+- **Storage**: `@react-native-async-storage/async-storage` for all local data
+- **Key features**:
+  - AI Prompt Generator (`components/PromptBuilder.tsx`) — generates JSON-format prompts for quiz/flashcard AI output, with copy/share/ZIP export
+  - JSON export/share (`utils/json-export.ts`) — native Share API + file-based sharing
+  - ZIP import/export (`utils/zip-handler.ts`) — jszip bundling of JSON + images
+  - Toast notifications (`components/Toast.tsx`) — global imperative toast system
+  - Difficulty classifier (`utils/difficulty-classifier.ts`)
+  - PDF report generator (`utils/report-generator.ts`)
+  - `AppIcon` SVG component (`components/AppIcon.tsx`)
+- **New icon**: Neural network brain + lightning bolt, dark navy-to-purple gradient (AI-generated PNG)
+- **Build**: EAS MANAGED workflow, APK built successfully (Build ID: `6f36dbe1`)
+  - `sdk-54` image (Java 17 + NDK r27b)
+  - pnpm v9, lockfile v9
+  - `babel-preset-expo ~54.0.8` explicitly declared
+
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.

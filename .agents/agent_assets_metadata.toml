@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "s3MPpaacZGbeV7HxtM7R_"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "neural brain lightning learning icon"

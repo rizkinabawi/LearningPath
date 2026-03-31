@@ -1,0 +1,174 @@
+You are a senior fullstack engineer and UI/UX designer.
+
+Update my existing application with the following improvements and new features. Follow best practices for clean architecture, scalable structure, and modern UI consistency.
+
+========================================
+🎨 UI / DESIGN SYSTEM IMPROVEMENT
+========================================
+
+1. Enforce CONSISTENT SPACING SYSTEM across all components:
+   - Use a spacing scale (e.g. 4px / 8px system)
+   - Ensure consistent:
+     - margin
+     - padding
+     - gap between components
+   - Apply globally via theme or design system (Tailwind / CSS variables)
+   - All cards, inputs, buttons must follow the same spacing rules
+
+2. Improve UI to feel:
+   - modern
+   - clean
+   - minimal
+   - professional (like premium SaaS)
+
+3. Replace low-quality icons with:
+   - clean outline or duotone icons
+   - consistent icon size & stroke
+   - avoid random mismatched icons
+
+========================================
+🧠 AI PROMPT GENERATOR FEATURE
+========================================
+
+Create a new feature: "AI Prompt Generator"
+
+Flow:
+- User inputs:
+  1. Topic (judul/topik)
+  2. Criteria (kriteria soal / tingkat kesulitan / gaya belajar)
+
+- System automatically generates a structured prompt for AI that:
+  - generates quiz OR flashcards
+  - output MUST be in JSON format compatible with this app
+
+Example output format:
+{
+  "type": "quiz" | "flashcard",
+  "topic": "...",
+  "items": [
+    {
+      "question": "...",
+      "options": ["...", "...", "..."],
+      "answer": "...",
+      "explanation": "...",
+      "image": "optional_url"
+    }
+  ]
+}
+
+OR flashcard:
+{
+  "type": "flashcard",
+  "items": [
+    {
+      "front": "...",
+      "back": "...",
+      "image": "optional_url"
+    }
+  ]
+}
+
+UI Requirements:
+- Form input (Topic + Criteria)
+- Button: "Generate Prompt"
+- Show generated prompt in textarea
+- Button: "Copy Prompt" (clipboard API)
+- Clean UX, fast interaction
+
+========================================
+📤 SHARE JSON FEATURE
+========================================
+
+Add feature to SHARE generated JSON:
+
+1. Export JSON
+2. Share options:
+   - WhatsApp
+   - Email
+   - Copy link (if hosted)
+   - Download JSON file
+
+3. Use:
+   - Web Share API (navigator.share) if supported
+   - fallback: download / copy
+
+========================================
+🖼 IMAGE HANDLING (ZIP SUPPORT)
+========================================
+
+If quiz/flashcard contains images:
+
+1. Allow bundling into ZIP:
+   - JSON file
+   - all referenced images
+
+2. Structure:
+   /package.zip
+     ├── data.json
+     └── images/
+         ├── img1.png
+         ├── img2.png
+
+3. Import feature:
+   - Upload ZIP
+   - Extract in browser
+   - Parse JSON
+   - map images correctly
+
+Use:
+- JSZip or similar library
+
+========================================
+🎯 APP ICON REDESIGN
+========================================
+
+Generate a new modern app icon:
+
+Style:
+- minimal
+- geometric
+- tech / AI feeling
+- gradient or glassmorphism
+- clean background
+
+Concept ideas:
+- brain + lightning
+- abstract knowledge symbol
+- AI spark / neural node
+
+Export:
+- SVG (primary)
+- PNG (fallback)
+
+========================================
+⚙️ TECH REQUIREMENTS
+========================================
+
+- Use modular structure
+- Separate:
+  - UI components
+  - logic
+  - services
+- Ensure code is reusable
+- Use TypeScript if possible
+- Clean naming conventions
+
+========================================
+✨ BONUS (if possible)
+========================================
+
+- Add toast notification:
+  - "Copied!"
+  - "Shared!"
+- Add loading state for AI generation
+- Add preview before export
+
+========================================
+
+Deliver:
+1. Updated UI components
+2. Prompt generator logic
+3. JSON export + share feature
+4. ZIP import/export implementation
+5. New icon assets
+6. Clean and maintainable code

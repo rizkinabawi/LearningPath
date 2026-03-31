@@ -19,6 +19,7 @@ import {
 } from "@/utils/storage";
 import Colors, { shadow, shadowSm, CARD_GRADIENTS } from "@/constants/colors";
 import { ProgressBar } from "@/components/ProgressBar";
+import { toast } from "@/components/Toast";
 
 const { width } = Dimensions.get("window");
 const CARD_W = width * 0.72;
@@ -282,8 +283,8 @@ export default function Dashboard() {
             {[
               { icon: "credit-card" as const, label: "Flashcard", color: Colors.primary, bg: Colors.primaryLight, route: "/(tabs)/practice" },
               { icon: "help-circle" as const, label: "Quiz", color: Colors.amber, bg: Colors.amberLight, route: "/(tabs)/practice" },
+              { icon: "cpu" as const, label: "AI Prompt", color: Colors.purple, bg: Colors.purpleLight, route: "/(tabs)/progress" },
               { icon: "bar-chart-2" as const, label: "Progress", color: Colors.teal, bg: Colors.tealLight, route: "/(tabs)/progress" },
-              { icon: "file-text" as const, label: "PDF Report", color: Colors.purple, bg: Colors.purpleLight, route: "/(tabs)/progress" },
             ].map((q, i) => (
               <TouchableOpacity
                 key={i}
