@@ -80,6 +80,30 @@ export interface Stats {
   lastStudyDate: string;
 }
 
+// Catatan per pelajaran
+export interface Note {
+  id: string;
+  lessonId: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Materi belajar per pelajaran (text / html / file)
+export interface StudyMaterial {
+  id: string;
+  lessonId: string;
+  title: string;
+  type: "text" | "html" | "file";
+  content: string;       // text or HTML string
+  filePath?: string;     // local file path for type=file
+  fileName?: string;     // original file name
+  fileSize?: number;     // bytes
+  fileMime?: string;     // MIME type
+  createdAt: string;
+}
+
 const STORAGE_KEYS = {
   USER: "user",
   LEARNING_PATHS: "learning_paths",
@@ -89,6 +113,8 @@ const STORAGE_KEYS = {
   QUIZZES: "quizzes",
   PROGRESS: "progress",
   STATS: "stats",
+  NOTES: "notes",
+  STUDY_MATERIALS: "study_materials",
 };
 
 export const generateId = () =>
@@ -265,4 +291,45 @@ export const updateStats = async (updates: Partial<Stats>) => {
 
 export const clearAllData = async () => {
   await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS));
+};
+
+// ─── Notes (Catatan) ───────────────────────────────────────────
+export const getNotes = async (lessonId?: string): Promise<Note[]> => {
+  const notes = await getFromStorage<Note>(STORAGE_KEYS.NOTES);
+  return lessonId ? notes.filter((n) => n.lessonId === lessonId) : notes;
+};
+
+export const saveNote = async (note: Note) => {
+  const notes = await getNotes();
+  const index = notes.findIndex((n) => n.id === note.id);
+  if (index >= 0) notes[index] = note;
+  else notes.push(note);
+  await saveToStorage(STORAGE_KEYS.NOTES, notes);
+};
+
+export const deleteNote = async (id: string) => {
+  const notes = await getNotes();
+  await saveToStorage(STORAGE_KEYS.NOTES, notes.filter((n) => n.id !== id));
+};
+
+// ─── Study Materials (Materi Belajar) ──────────────────────────
+export const getStudyMaterials = async (lessonId?: string): Promise<StudyMaterial[]> => {
+  const mats = await getFromStorage<StudyMaterial>(STORAGE_KEYS.STUDY_MATERIALS);
+  return lessonId ? mats.filter((m) => m.lessonId === lessonId) : mats;
+};
+
+export const saveStudyMaterial = async (mat: StudyMaterial) => {
+  const mats = await getStudyMaterials();
+  const index = mats.findIndex((m) => m.id === mat.id);
+  if (index >= 0) mats[index] = mat;
+  else mats.push(mat);
+  await saveToStorage(STORAGE_KEYS.STUDY_MATERIALS, mats);
+};
+
+export const deleteStudyMaterial = async (id: string) => {
+  const mats = await getStudyMaterials();
+  await saveToStorage(
+    STORAGE_KEYS.STUDY_MATERIALS,
+    mats.filter((m) => m.id !== id)
+  );
 };

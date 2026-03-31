@@ -9,28 +9,28 @@ import {
   Alert,
   StyleSheet,
   Platform,
-  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  getLearningPaths, getModules, getLessons, getFlashcards, getQuizzes,
+  getLearningPaths, getModules, getLessons,
+  getFlashcards, getQuizzes, getNotes, getStudyMaterials,
   saveLearningPath, saveModule, saveLesson, deleteLearningPath,
   generateId, type LearningPath, type Module, type Lesson,
 } from "@/utils/storage";
 import Colors from "@/constants/colors";
 
-const { width } = Dimensions.get("window");
-
-const GRAD_PALETTE = [
-  ["#4A9EFF", "#6C63FF"] as [string, string],
-  ["#FF6B6B", "#FF9500"] as [string, string],
-  ["#0AD3C1", "#00B4D8"] as [string, string],
-  ["#7C3AED", "#A855F7"] as [string, string],
-  ["#059669", "#10B981"] as [string, string],
+const GRAD_PALETTE: [string, string][] = [
+  ["#4A9EFF", "#6C63FF"],
+  ["#FF6B6B", "#FF9500"],
+  ["#0AD3C1", "#00B4D8"],
+  ["#7C3AED", "#A855F7"],
+  ["#059669", "#10B981"],
 ];
+
+type ModCounts = { fc: number; qz: number; nt: number; mt: number };
 
 export default function LearnPage() {
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function LearnPage() {
   const [activePath, setActivePath] = useState<LearningPath | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [lessons, setLessons] = useState<Record<string, Lesson[]>>({});
-  const [counts, setCounts] = useState<Record<string, { fc: number; qz: number }>>({});
+  const [counts, setCounts] = useState<Record<string, ModCounts>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const [showNewPath, setShowNewPath] = useState(false);
@@ -63,16 +63,18 @@ export default function LearnPage() {
     const mods = (await getModules(activePath.id)).sort((a, b) => a.order - b.order);
     setModules(mods);
     const lMap: Record<string, Lesson[]> = {};
-    const cMap: Record<string, { fc: number; qz: number }> = {};
+    const cMap: Record<string, ModCounts> = {};
     for (const mod of mods) {
       const ls = await getLessons(mod.id);
       lMap[mod.id] = ls.sort((a, b) => a.order - b.order);
-      let fc = 0, qz = 0;
+      let fc = 0, qz = 0, nt = 0, mt = 0;
       for (const l of ls) {
         fc += (await getFlashcards(l.id)).length;
         qz += (await getQuizzes(l.id)).length;
+        nt += (await getNotes(l.id)).length;
+        mt += (await getStudyMaterials(l.id)).length;
       }
-      cMap[mod.id] = { fc, qz };
+      cMap[mod.id] = { fc, qz, nt, mt };
     }
     setLessons(lMap);
     setCounts(cMap);
@@ -83,7 +85,11 @@ export default function LearnPage() {
 
   const createPath = async () => {
     if (!pathName.trim()) return;
-    const p: LearningPath = { id: generateId(), name: pathName.trim(), description: pathDesc.trim(), userId: "local", createdAt: new Date().toISOString() };
+    const p: LearningPath = {
+      id: generateId(), name: pathName.trim(),
+      description: pathDesc.trim(), userId: "local",
+      createdAt: new Date().toISOString(),
+    };
     await saveLearningPath(p);
     setPathName(""); setPathDesc(""); setShowNewPath(false);
     const updated = await getLearningPaths();
@@ -92,7 +98,11 @@ export default function LearnPage() {
 
   const createModule = async () => {
     if (!modName.trim() || !activePath) return;
-    const m: Module = { id: generateId(), pathId: activePath.id, name: modName.trim(), description: "", order: modules.length, createdAt: new Date().toISOString() };
+    const m: Module = {
+      id: generateId(), pathId: activePath.id,
+      name: modName.trim(), description: "",
+      order: modules.length, createdAt: new Date().toISOString(),
+    };
     await saveModule(m);
     setModName(""); setShowNewModule(false);
     loadModules();
@@ -100,7 +110,12 @@ export default function LearnPage() {
 
   const createLesson = async () => {
     if (!lessonName.trim() || !targetMod) return;
-    const l: Lesson = { id: generateId(), moduleId: targetMod, name: lessonName.trim(), description: lessonDesc.trim(), order: (lessons[targetMod] ?? []).length, createdAt: new Date().toISOString() };
+    const l: Lesson = {
+      id: generateId(), moduleId: targetMod,
+      name: lessonName.trim(), description: lessonDesc.trim(),
+      order: (lessons[targetMod] ?? []).length,
+      createdAt: new Date().toISOString(),
+    };
     await saveLesson(l);
     setLessonName(""); setLessonDesc(""); setShowNewLesson(false);
     loadModules();
@@ -129,11 +144,9 @@ export default function LearnPage() {
           </TouchableOpacity>
         </View>
 
-        {/* Path tabs — FIXED HEIGHT */}
         {paths.length > 0 && (
           <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
+            horizontal showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.pathTabsContent}
             style={styles.pathTabsScroll}
           >
@@ -152,9 +165,7 @@ export default function LearnPage() {
                 style={[styles.pathTab, activePath?.id === p.id && styles.pathTabActive]}
                 activeOpacity={0.7}
               >
-                {activePath?.id === p.id && (
-                  <View style={styles.pathTabDot} />
-                )}
+                {activePath?.id === p.id && <View style={styles.pathTabDot} />}
                 <Text style={[styles.pathTabText, activePath?.id === p.id && styles.pathTabTextActive]} numberOfLines={1}>
                   {p.name}
                 </Text>
@@ -183,7 +194,7 @@ export default function LearnPage() {
         {modules.map((mod, mi) => {
           const isExpanded = !!expanded[mod.id];
           const modLessons = lessons[mod.id] ?? [];
-          const cnt = counts[mod.id] ?? { fc: 0, qz: 0 };
+          const cnt = counts[mod.id] ?? { fc: 0, qz: 0, nt: 0, mt: 0 };
           const grad = GRAD_PALETTE[mi % GRAD_PALETTE.length];
 
           return (
@@ -200,11 +211,15 @@ export default function LearnPage() {
                 </LinearGradient>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.moduleName}>{mod.name}</Text>
-                  <View style={styles.moduleMetaRow}>
-                    <View style={styles.metaChip}><Text style={styles.metaChipText}>{modLessons.length} Pelajaran</Text></View>
-                    <View style={styles.metaChip}><Text style={styles.metaChipText}>{cnt.fc} Kartu</Text></View>
-                    <View style={styles.metaChip}><Text style={styles.metaChipText}>{cnt.qz} Kuis</Text></View>
-                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.moduleMetaRow}>
+                      <View style={styles.metaChip}><Text style={styles.metaChipText}>{modLessons.length} Pelajaran</Text></View>
+                      <View style={styles.metaChip}><Text style={styles.metaChipText}>{cnt.fc} Kartu</Text></View>
+                      <View style={styles.metaChip}><Text style={styles.metaChipText}>{cnt.qz} Quiz</Text></View>
+                      <View style={[styles.metaChip, { backgroundColor: "#EEF0FF" }]}><Text style={[styles.metaChipText, { color: Colors.primary }]}>{cnt.nt} Catatan</Text></View>
+                      <View style={[styles.metaChip, { backgroundColor: Colors.purpleLight }]}><Text style={[styles.metaChipText, { color: Colors.purple }]}>{cnt.mt} Materi</Text></View>
+                    </View>
+                  </ScrollView>
                 </View>
                 <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color={Colors.textMuted} />
               </TouchableOpacity>
@@ -216,31 +231,53 @@ export default function LearnPage() {
                       <LinearGradient colors={grad} style={styles.lessonNum}>
                         <Text style={styles.lessonNumText}>{li + 1}</Text>
                       </LinearGradient>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.lessonName}>{lesson.name}</Text>
-                        {lesson.description ? <Text style={styles.lessonDesc} numberOfLines={1}>{lesson.description}</Text> : null}
-                      </View>
-                      <View style={styles.lessonActions}>
-                        <TouchableOpacity
-                          onPress={() => router.push(`/flashcard/${lesson.id}`)}
-                          style={styles.actionPill}
-                          activeOpacity={0.75}
-                        >
-                          <Text style={styles.actionPillText}>🃏 Kartu</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => router.push(`/quiz/${lesson.id}`)}
-                          style={[styles.actionPill, styles.actionPillOrange]}
-                          activeOpacity={0.75}
-                        >
-                          <Text style={styles.actionPillText}>❓ Quiz</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => router.push(`/create-flashcard/${lesson.id}`)}
-                          style={styles.addIconBtn}
-                        >
-                          <Feather name="plus" size={14} color={Colors.primary} />
-                        </TouchableOpacity>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.lessonName} numberOfLines={1}>{lesson.name}</Text>
+                        {lesson.description ? (
+                          <Text style={styles.lessonDesc} numberOfLines={1}>{lesson.description}</Text>
+                        ) : null}
+
+                        {/* Action row */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
+                          <View style={styles.actionRow}>
+                            <TouchableOpacity
+                              onPress={() => router.push(`/notes/${lesson.id}`)}
+                              style={[styles.actionPill, styles.pillNote]}
+                              activeOpacity={0.75}
+                            >
+                              <Text style={styles.actionPillText}>📝 Catatan</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => router.push(`/study-material/${lesson.id}`)}
+                              style={[styles.actionPill, styles.pillMaterial]}
+                              activeOpacity={0.75}
+                            >
+                              <Text style={styles.actionPillText}>📚 Materi</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => router.push(`/flashcard/${lesson.id}`)}
+                              style={[styles.actionPill, styles.pillCard]}
+                              activeOpacity={0.75}
+                            >
+                              <Text style={styles.actionPillText}>🃏 Kartu</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => router.push(`/quiz/${lesson.id}`)}
+                              style={[styles.actionPill, styles.pillQuiz]}
+                              activeOpacity={0.75}
+                            >
+                              <Text style={styles.actionPillText}>❓ Quiz</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => router.push(`/create-quiz/${lesson.id}`)}
+                              style={[styles.actionPill, styles.pillAdd]}
+                              activeOpacity={0.75}
+                            >
+                              <Feather name="plus" size={11} color={Colors.primary} />
+                              <Text style={[styles.actionPillText, { color: Colors.primary }]}>Soal</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </ScrollView>
                       </View>
                     </View>
                   ))}
@@ -268,21 +305,33 @@ export default function LearnPage() {
 
       {/* MODALS */}
       {[
-        { vis: showNewPath, title: "📚 Kursus Baru", close: () => setShowNewPath(false), save: createPath, body: (
-          <>
-            <TextInput placeholder="Nama kursus" value={pathName} onChangeText={setPathName} style={styles.mInput} placeholderTextColor={Colors.textMuted} autoFocus />
-            <TextInput placeholder="Deskripsi (opsional)" value={pathDesc} onChangeText={setPathDesc} style={styles.mInput} placeholderTextColor={Colors.textMuted} />
-          </>
-        )},
-        { vis: showNewModule, title: "📂 Modul Baru", close: () => setShowNewModule(false), save: createModule, body: (
-          <TextInput placeholder="Nama modul" value={modName} onChangeText={setModName} style={styles.mInput} placeholderTextColor={Colors.textMuted} autoFocus />
-        )},
-        { vis: showNewLesson, title: "📝 Pelajaran Baru", close: () => setShowNewLesson(false), save: createLesson, body: (
-          <>
-            <TextInput placeholder="Nama pelajaran" value={lessonName} onChangeText={setLessonName} style={styles.mInput} placeholderTextColor={Colors.textMuted} autoFocus />
-            <TextInput placeholder="Deskripsi (opsional)" value={lessonDesc} onChangeText={setLessonDesc} style={styles.mInput} placeholderTextColor={Colors.textMuted} />
-          </>
-        )},
+        {
+          vis: showNewPath, title: "📚 Kursus Baru",
+          close: () => setShowNewPath(false), save: createPath,
+          body: (
+            <>
+              <TextInput placeholder="Nama kursus" value={pathName} onChangeText={setPathName} style={styles.mInput} placeholderTextColor={Colors.textMuted} autoFocus />
+              <TextInput placeholder="Deskripsi (opsional)" value={pathDesc} onChangeText={setPathDesc} style={styles.mInput} placeholderTextColor={Colors.textMuted} />
+            </>
+          ),
+        },
+        {
+          vis: showNewModule, title: "📂 Modul Baru",
+          close: () => setShowNewModule(false), save: createModule,
+          body: (
+            <TextInput placeholder="Nama modul" value={modName} onChangeText={setModName} style={styles.mInput} placeholderTextColor={Colors.textMuted} autoFocus />
+          ),
+        },
+        {
+          vis: showNewLesson, title: "📝 Pelajaran Baru",
+          close: () => setShowNewLesson(false), save: createLesson,
+          body: (
+            <>
+              <TextInput placeholder="Nama pelajaran" value={lessonName} onChangeText={setLessonName} style={styles.mInput} placeholderTextColor={Colors.textMuted} autoFocus />
+              <TextInput placeholder="Deskripsi (opsional)" value={lessonDesc} onChangeText={setLessonDesc} style={styles.mInput} placeholderTextColor={Colors.textMuted} />
+            </>
+          ),
+        },
       ].map((m) => (
         <Modal key={m.title} visible={m.vis} transparent animationType="slide">
           <View style={styles.mOverlay}>
@@ -332,23 +381,36 @@ const styles = StyleSheet.create({
   moduleHeader: { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
   modIconGrad: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   moduleName: { fontSize: 15, fontWeight: "800", color: Colors.dark, marginBottom: 6 },
-  moduleMetaRow: { flexDirection: "row", gap: 6 },
-  metaChip: { backgroundColor: Colors.background, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  moduleMetaRow: { flexDirection: "row", gap: 5 },
+  metaChip: { backgroundColor: Colors.background, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7 },
   metaChipText: { fontSize: 10, fontWeight: "700", color: Colors.textSecondary },
   lessonList: { borderTopWidth: 1, borderTopColor: Colors.border, paddingHorizontal: 14, paddingBottom: 8 },
-  lessonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: 10 },
-  lessonNum: { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  lessonRow: {
+    flexDirection: "row", alignItems: "flex-start",
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: 10,
+  },
+  lessonNum: { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center", marginTop: 2 },
   lessonNumText: { fontSize: 11, fontWeight: "900", color: "#fff" },
   lessonName: { fontSize: 13, fontWeight: "700", color: Colors.dark },
-  lessonDesc: { fontSize: 11, color: Colors.textMuted, fontWeight: "500" },
-  lessonActions: { flexDirection: "row", gap: 6, alignItems: "center" },
-  actionPill: { backgroundColor: Colors.primaryLight, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
-  actionPillOrange: { backgroundColor: Colors.amberLight },
+  lessonDesc: { fontSize: 11, color: Colors.textMuted, fontWeight: "500", marginTop: 1 },
+  actionRow: { flexDirection: "row", gap: 5, alignItems: "center" },
+  actionPill: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8,
+  },
+  pillNote: { backgroundColor: "#EEF0FF" },
+  pillMaterial: { backgroundColor: Colors.purpleLight },
+  pillCard: { backgroundColor: Colors.primaryLight },
+  pillQuiz: { backgroundColor: Colors.amberLight },
+  pillAdd: { backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border },
   actionPillText: { fontSize: 10, fontWeight: "800", color: Colors.dark },
-  addIconBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: Colors.background, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Colors.border },
   addLessonRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },
   addLessonText: { fontSize: 13, color: Colors.primary, fontWeight: "700" },
-  addModBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.primary, borderStyle: "dashed" },
+  addModBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 14, borderRadius: 14,
+    borderWidth: 1.5, borderColor: Colors.primary, borderStyle: "dashed",
+  },
   addModText: { fontSize: 13, fontWeight: "700", color: Colors.primary },
   mOverlay: { flex: 1, backgroundColor: "rgba(10,22,40,0.6)", justifyContent: "flex-end" },
   mBox: { backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, gap: 12 },
