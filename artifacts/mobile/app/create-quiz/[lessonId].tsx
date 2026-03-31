@@ -67,22 +67,30 @@ const buildAIPrompt = (topic: string, count: number, difficulty: string) => {
 
   return `Buatkan ${count} soal pilihan ganda tentang "${topic}" dengan tingkat kesulitan ${diffLabel}.
 
-PENTING: Balas HANYA dengan array JSON, tanpa teks tambahan apapun, tanpa markdown, tanpa blok kode.
+PENTING: Balas HANYA dengan array JSON murni. Jangan tambahkan teks, penjelasan, markdown, atau blok kode (\`\`\`). Langsung mulai dengan tanda [ dan akhiri dengan ].
 
-Format JSON yang wajib digunakan:
+Format JSON yang WAJIB digunakan (contoh):
 [
   {
-    "question": "Pertanyaan soal di sini?",
-    "options": ["Pilihan A", "Pilihan B", "Pilihan C", "Pilihan D"],
-    "answer": "Pilihan A"
+    "question": "Apa fungsi dari useEffect di React?",
+    "options": [
+      "Mengelola side effects setelah render",
+      "Menyimpan state lokal komponen",
+      "Membuat komponen baru",
+      "Menghapus elemen dari DOM"
+    ],
+    "answer": "Mengelola side effects setelah render"
   }
 ]
 
-Aturan:
-- Setiap soal harus memiliki tepat 4 pilihan jawaban di dalam array "options"
-- Nilai "answer" harus sama persis (huruf besar/kecil, spasi) dengan salah satu item di "options"
-- Gunakan Bahasa Indonesia
-- Buat soal yang relevan dan edukatif tentang topik: ${topic}`;
+ATURAN WAJIB — wajib diikuti untuk setiap soal:
+1. Field "question": string berisi pertanyaan
+2. Field "options": array berisi TEPAT 4 string pilihan jawaban (teks lengkap, bukan huruf A/B/C/D)
+3. Field "answer": string yang IDENTIK SAMA PERSIS (huruf, spasi, tanda baca) dengan salah satu elemen di array "options"
+4. JANGAN gunakan "A", "B", "C", "D" sebagai nilai "answer" — gunakan teks lengkap opsinya
+5. Tidak ada field lain selain "question", "options", "answer"
+6. Gunakan Bahasa Indonesia
+7. Topik: ${topic}`;
 };
 
 export default function CreateQuizScreen() {
